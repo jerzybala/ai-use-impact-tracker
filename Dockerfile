@@ -13,9 +13,11 @@ COPY . .
 ENV DATA_DIR=/app/data
 RUN mkdir -p /app/data
 
-# Railway sets PORT env var automatically
-ENV PORT=8080
-EXPOSE 8080
+# Persistent data volume
+VOLUME /app/data
 
-# Railway injects $PORT at runtime — must use shell form so it expands
-CMD gunicorn app:app --bind "0.0.0.0:$PORT" --timeout 300 --workers 2 --threads 4
+# Railway injects PORT at runtime; default to 8080 for local dev
+ENV PORT=8080
+
+# Use ENTRYPOINT with shell form so $PORT expands at runtime
+ENTRYPOINT ["sh", "-c", "exec gunicorn app:app --bind 0.0.0.0:${PORT} --timeout 300 --workers 1 --threads 2 --log-level info"]
