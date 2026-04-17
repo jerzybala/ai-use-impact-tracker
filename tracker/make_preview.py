@@ -131,6 +131,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .month-bar .month-nav { background: #fff; border: 1px solid var(--rule); border-radius: 6px; padding: 5px 10px; font-size: 13px; color: var(--accent); cursor: pointer; line-height: 1; }
   .month-bar .month-nav:hover:not(:disabled) { background: var(--chip); }
   .month-bar .month-nav:disabled { opacity: 0.35; cursor: not-allowed; }
+  .scatter-controls { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 13px; color: var(--muted); }
+  .scatter-controls label { font-weight: 600; color: var(--accent); }
+  .scatter-controls input[type="range"] { width: 160px; accent-color: var(--accent2); }
+  .scatter-controls span { font-weight: 600; color: var(--accent); min-width: 28px; }
   .label-toggle { font-size: 11px; font-weight: 500; color: var(--accent2); background: var(--chip); border: 1px solid var(--rule); border-radius: 4px; padding: 2px 8px; margin-left: 10px; cursor: pointer; vertical-align: middle; }
   .label-toggle:hover { background: #dbe4ed; }
 </style>
@@ -188,7 +192,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <div class="panel"><h3>Top 12 countries — ranked by Net Impact Index — <span class="sel-month">—</span></h3><div id="chart-country-bar"></div></div>
   <div class="panel">
     <h3>Adoption rate × Net Impact — <span class="sel-month">—</span></h3>
-    <p class="muted">Each dot is one of the top 12 countries by sample size; dot size encodes respondent count.</p>
+    <p class="muted">Dot size encodes total respondent count (all survey takers in that country-month, not just AI users).</p>
+    <div class="scatter-controls">
+      <label for="scatter-min-n">Min N:</label>
+      <input type="range" id="scatter-min-n" min="50" max="500" step="10" value="50">
+      <span id="scatter-min-n-val">50</span>
+    </div>
     <div id="chart-country-scatter"></div>
   </div>
   <div class="panel">
@@ -371,14 +380,15 @@ function render() {
       }).filter(d => d && d.n_respondents >= 50 && d.net_impact_index != null);
 
       const ctyByC = d3.group(countryNonSup.filter(r => inWin(r)), r => r.country_clean);
-      const ctyPooled = Array.from(ctyByC, ([c, rs]) => {
+      const ctyPooledAll = Array.from(ctyByC, ([c, rs]) => {
         const p = poolRows(rs); if (!p) return null; p.country_clean = c; return p;
-      }).filter(d => d && d.n_respondents >= 50 && d.net_impact_index != null
-                   && topCountries.includes(d.country_clean));
+      }).filter(d => d && d.n_respondents >= 50 && d.net_impact_index != null);
+      const ctyPooled = ctyPooledAll.filter(d => topCountries.includes(d.country_clean));
 
       return {
         isRolling: true, rollingN: n, windowMonths: windowKeys,
-        selected: pooledGlobal, selGender: genderPooled, selAge: agePooled, selCountry: ctyPooled,
+        selected: pooledGlobal, selGender: genderPooled, selAge: agePooled,
+        selCountry: ctyPooled, selCountryAll: ctyPooledAll,
         doseGlobalRows: [pooledGlobal]
       };
     }
@@ -388,12 +398,12 @@ function render() {
       && d.year === selected.year && d.month === selected.month);
     const selAge = ageBand.filter(d => !d.suppressed && d.net_impact_index != null
       && d.year === selected.year && d.month === selected.month);
-    const selCountry = countryNonSup.filter(d => d.net_impact_index != null
-      && d.year === selected.year && d.month === selected.month
-      && topCountries.includes(d.country_clean));
+    const selCountryAll = countryNonSup.filter(d => d.net_impact_index != null
+      && d.year === selected.year && d.month === selected.month);
+    const selCountry = selCountryAll.filter(d => topCountries.includes(d.country_clean));
     return {
       isRolling: false, monthKey: ymKey,
-      selected, selGender, selAge, selCountry,
+      selected, selGender, selAge, selCountry, selCountryAll,
       doseGlobalRows: [selected]
     };
   }
@@ -594,6 +604,32 @@ function render() {
     if (window.__compRaw) drawCompositionChart(window.__compRaw);
   });
 
+  // ----- Scatter chart renderer + min-N slider -----
+  function drawScatter() {
+    const minN = +document.getElementById("scatter-min-n").value;
+    const data = (window.__scatterCountryData || []).filter(d => d.n_respondents >= minN);
+    document.getElementById("chart-country-scatter").replaceChildren(Plot.plot({
+      height: 380, marginLeft: 80, marginRight: 30,
+      x: { grid: true, label: "AI adoption rate", tickFormat: d => (d*100).toFixed(0)+"%" },
+      y: { grid: true, label: "Net Impact Index" },
+      marks: [
+        Plot.ruleY([0], { stroke: "#bbb" }),
+        Plot.dot(data, { x: "adoption_rate", y: "net_impact_index",
+          r: d => Math.sqrt(d.n_respondents) / 2,
+          fill: d => d.net_impact_index >= 0 ? "#1a7f4e" : "#b3261e",
+          fillOpacity: 0.7, stroke: "white" }),
+        Plot.text(data, { x: "adoption_rate", y: "net_impact_index",
+          text: "country_clean", dx: -12, textAnchor: "end", fontSize: 11 })
+      ]
+    }));
+  }
+  const scatterSlider = document.getElementById("scatter-min-n");
+  const scatterLabel = document.getElementById("scatter-min-n-val");
+  scatterSlider.addEventListener("input", () => {
+    scatterLabel.textContent = scatterSlider.value;
+    drawScatter();
+  });
+
   // ----- Main rendering for the current selection (single month or pooled) -----
   function renderMonth(ymKey) {
     const sel = resolveSelection(ymKey);
@@ -678,20 +714,12 @@ function render() {
       ]
     }));
 
-    document.getElementById("chart-country-scatter").replaceChildren(Plot.plot({
-      height: 380, marginLeft: 60,
-      x: { grid: true, label: "AI adoption rate", tickFormat: d => (d*100).toFixed(0)+"%" },
-      y: { grid: true, label: "Net Impact Index" },
-      marks: [
-        Plot.ruleY([0], { stroke: "#bbb" }),
-        Plot.dot(sel.selCountry, { x: "adoption_rate", y: "net_impact_index",
-          r: d => Math.sqrt(d.n_respondents) / 2,
-          fill: d => d.net_impact_index >= 0 ? "#1a7f4e" : "#b3261e",
-          fillOpacity: 0.7, stroke: "white" }),
-        Plot.text(sel.selCountry, { x: "adoption_rate", y: "net_impact_index",
-          text: "country_clean", dy: -12, fontSize: 11 })
-      ]
-    }));
+    // Scatter: store full country data for min-N filtering
+    window.__scatterCountryData = sel.selCountryAll;
+    drawScatter();
+
+    // Update slider label display
+    document.getElementById("scatter-min-n-val").textContent = document.getElementById("scatter-min-n").value;
 
     // --- Dose-response: global, gender, age ---
     const doseGlobal = unpackDose(sel.doseGlobalRows);
