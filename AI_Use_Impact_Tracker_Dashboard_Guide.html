@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Use Impact Tracker — Dashboard Guide</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #6b7280;
+    --accent: #1F3A5F;
+    --accent2: #2E5C8A;
+    --pos: #1a7f4e;
+    --neg: #b3261e;
+    --rule: #e5e7eb;
+    --chip: #E8EEF4;
+    --code-bg: #f4f6f9;
+  }
+  html, body {
+    margin: 0; padding: 0;
+    background: #fff;
+    color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 48px 48px 72px; }
+  header.title { border-bottom: 2px solid var(--accent); padding-bottom: 20px; margin-bottom: 36px; }
+  h1 { color: var(--accent); font-size: 30px; margin: 0 0 8px; }
+  header.title .sub { color: var(--muted); font-size: 15px; }
+  h2 { color: var(--accent); font-size: 22px; margin: 40px 0 12px; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+  h3 { color: var(--accent2); font-size: 17px; margin: 24px 0 8px; }
+  h4 { font-size: 15px; margin: 18px 0 6px; color: #333; }
+  p { margin: 8px 0 12px; }
+  ul, ol { margin: 6px 0 14px 0; padding-left: 24px; }
+  li { margin: 4px 0; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.92em; }
+  pre {
+    background: var(--code-bg); padding: 12px 14px; border-radius: 6px;
+    font-size: 13px; line-height: 1.5; overflow-x: auto;
+    border-left: 3px solid var(--accent2);
+  }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; width: 100%; }
+  th, td { border: 1px solid var(--rule); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--chip); color: var(--accent); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .callout {
+    background: #f7f9fc; border-left: 3px solid var(--accent2);
+    padding: 10px 16px; margin: 14px 0 18px; border-radius: 4px;
+  }
+  .callout.warn { background: #fdf5ec; border-left-color: #d97706; }
+  .callout.note { background: #f0f7f4; border-left-color: var(--pos); }
+  .toc { background: var(--chip); border-radius: 6px; padding: 16px 24px; margin-bottom: 32px; }
+  .toc ol { margin: 0; padding-left: 22px; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  .formula {
+    display: block; text-align: center; margin: 10px auto; padding: 10px 20px;
+    background: var(--code-bg); border-radius: 6px; font-family: "SF Mono", Menlo, monospace; font-size: 14px;
+  }
+  .chip { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: var(--chip); color: var(--accent); margin-right: 4px; }
+  .chip.pos { background: #e3f4ec; color: var(--pos); }
+  .chip.neg { background: #fceceb; color: var(--neg); }
+  footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 13px; text-align: center; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="title">
+  <h1>AI Use Impact Tracker — Dashboard Guide</h1>
+  <div class="sub">What each screen shows, what each metric represents, and how every number is computed. Companion document to the Phase 1 scoping brief.</div>
+  <div class="sub" style="margin-top:6px">Prepared for Sapien Labs · Global Mind Project · April 2026</div>
+</header>
+
+<div class="toc">
+  <b>Contents</b>
+  <ol>
+    <li><a href="#overview">1. Dashboard at a glance</a></li>
+    <li><a href="#data">2. The data that feeds it</a></li>
+    <li><a href="#screens">3. Screen-by-screen walkthrough</a>
+      <ol>
+        <li><a href="#screen-overview">3.1 Overview</a></li>
+        <li><a href="#screen-country">3.2 By country</a></li>
+        <li><a href="#screen-frequency">3.3 Frequency &amp; impact</a></li>
+        <li><a href="#screen-about">3.4 Methodology</a></li>
+      </ol>
+    </li>
+    <li><a href="#metrics">4. Metric definitions &amp; formulas</a></li>
+    <li><a href="#normalization">5. Normalization &amp; harmonization rules</a></li>
+    <li><a href="#stratification">6. Stratification &amp; suppression</a></li>
+    <li><a href="#architecture">7. How the numbers get to the screen</a></li>
+    <li><a href="#limits">8. Known limits &amp; what's next</a></li>
+    <li><a href="#appendix">Appendix A — Reading the percentages correctly</a>
+      <ol>
+        <li><a href="#appendix-cohorts">A.1 Different cards, different cohorts</a></li>
+        <li><a href="#appendix-nesting">A.2 Don't chain the percentages</a></li>
+        <li><a href="#appendix-pooling">A.3 How the "global" number is pooled</a></li>
+        <li><a href="#appendix-composition">A.4 Why the Composition bars don't sum to the KPI</a></li>
+        <li><a href="#appendix-no-impact">A.5 What "No impact" at 56% actually means</a></li>
+        <li><a href="#appendix-dose">A.6 The dose-response chart is associational</a></li>
+        <li><a href="#appendix-checks">A.7 Two sanity checks for any percentage</a></li>
+      </ol>
+    </li>
+  </ol>
+</div>
+
+<!-- ======================================================================= -->
+<h2 id="overview">1. Dashboard at a glance</h2>
+
+<p>The AI Use Impact Tracker is a static, public-facing dashboard that turns
+the Global Mind Project (GMP) survey into a monthly picture of how people's
+AI use relates to self-reported impact on their work. The current build is a
+single-page preview with four tabs:</p>
+
+<table>
+  <thead>
+    <tr><th style="width: 22%">Tab</th><th>What it answers</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><b>Overview</b></td><td>Where are we globally right now, and how has the global picture moved over time?</td></tr>
+    <tr><td><b>By country</b></td><td>Which countries lead or lag on perceived AI impact, and what does the adoption-vs-impact landscape look like?</td></tr>
+    <tr><td><b>Frequency &amp; impact</b></td><td>Does more frequent AI use correspond to more positive impact (dose-response)? Does the pattern differ by gender or age? How is the frequency mix evolving?</td></tr>
+    <tr><td><b>Methodology</b></td><td>The ground truth for what a metric means and who is included.</td></tr>
+  </tbody>
+</table>
+
+<p>Every number on the screen traces back to a row in the Parquet metric
+layer at <code>tracker/output/v1/metrics/</code>, which is the stable contract
+between the ETL and the presentation layer.</p>
+
+<!-- ======================================================================= -->
+<h2 id="data">2. The data that feeds it</h2>
+
+<p>The Phase 1 run is driven by a single CSV dump of GMP responses
+(<code>gmp_data_2026-04-14_02-34-00.csv</code>, ~1.2 GB, 910,812 rows). The
+ETL reads only the eight columns it needs:</p>
+
+<table>
+  <thead>
+    <tr><th>Column</th><th>Purpose</th><th>Role</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>response_id</code></td><td>Unique respondent id</td><td>de-duplication</td></tr>
+    <tr><td><code>submitted_at</code></td><td>Response timestamp</td><td>month bucketing (year, month)</td></tr>
+    <tr><td><code>country</code></td><td>Raw country string</td><td>stratifier (after alias harmonization)</td></tr>
+    <tr><td><code>gender</code></td><td>Raw gender string</td><td>stratifier (after normalization)</td></tr>
+    <tr><td><code>age</code></td><td>Integer age</td><td>stratifier (mapped to age band)</td></tr>
+    <tr><td><code>ai_freq</code></td><td>AI-use frequency (ordinal)</td><td><b>exposure</b></td></tr>
+    <tr><td><code>ai_impact_work</code></td><td>Multi-select impact at work</td><td><b>outcome</b></td></tr>
+    <tr><td><code>submitted_from</code></td><td>Submission channel</td><td>reserved for quality flags</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+<b>The key fact about this dataset.</b> Only ~19.5% of respondents answered
+the <code>ai_impact_work</code> question (80.5% are NA). This is expected —
+the question is shown conditionally. So any "impact" metric's denominator is
+an order of magnitude smaller than the overall sample. The
+minimum-N=50 suppression rule (see §6) protects us from publishing numbers
+that sit on too thin a base.
+</div>
+
+<!-- ======================================================================= -->
+<h2 id="screens">3. Screen-by-screen walkthrough</h2>
+
+<!-- --------------------------- Overview --------------------------- -->
+<h3 id="screen-overview">3.1 Overview</h3>
+
+<p>The landing view. It reports the global state in the most recent month
+with non-null impact data, then traces how that state has evolved.</p>
+
+<h4>The five KPI cards</h4>
+
+<table>
+  <thead>
+    <tr><th>Card</th><th>Reads</th><th>What it means</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Respondents (latest month)</td>
+      <td><code>n_respondents</code> for the latest global row with a computed Net Impact Index</td>
+      <td>Total GMP respondents that month, regardless of whether they answered the AI questions. This is the survey denominator.</td>
+    </tr>
+    <tr>
+      <td>AI Adoption Rate</td>
+      <td><code>adoption_rate</code> → percent</td>
+      <td>Share of respondents reporting <i>any</i> AI use (ai_freq ≥ Rarely). 1 − share of "Never".</td>
+    </tr>
+    <tr>
+      <td>Positive-impact Share</td>
+      <td><code>positive_impact_share</code> → percent</td>
+      <td>Among AI users who answered the impact question, the share who flagged "Improved quality" or "New opportunities".</td>
+    </tr>
+    <tr>
+      <td>Negative-impact Share</td>
+      <td><code>negative_impact_share</code> → percent</td>
+      <td>Same denominator as Positive-impact Share, numerator is the share who flagged "Adaptation pressure" or "Job anxiety". Shown in red so it's visually distinct from the positive side.</td>
+    </tr>
+    <tr>
+      <td>Net Impact Index</td>
+      <td><code>net_impact_index</code></td>
+      <td>Positive-impact share minus negative-impact share. Range [−1, +1]. The single headline number, but always read it alongside the two component shares — a +0.20 can come from 25% pos / 5% neg or from 50% pos / 30% neg, and those are very different stories.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h4>The five charts</h4>
+
+<ol>
+  <li><b>Positive and Negative impact share over time — global.</b> Two lines on a shared percent axis: green for <code>positive_impact_share</code>, red for <code>negative_impact_share</code>. Each month's Net Impact Index is annotated in light grey along the x-axis so the headline number stays visible. Reading this chart tells a causal-adjacent story the single-line NII can't: when NII rises, did the green line climb (people feel more positive) or the red line fall (people feel less anxious / less pressured)? Those are different stories with different policy implications. Months with null impact data (because the question wasn't asked that cycle) are simply absent from both lines.</li>
+  <li><b>AI adoption rate — global.</b> Column chart of <code>adoption_rate</code> per month. Answers "how fast is AI use spreading?" separately from whether that use feels good.</li>
+  <li><b>Impact share composition — latest month.</b> Horizontal bars of all seven impact categories (see §4.3). Green = positive, red = negative, grey = neutral/ambiguous. Bars sum to more than 100% — respondents can pick more than one.</li>
+  <li><b>Net Impact by gender — latest month.</b> Diverging bar chart across gender groups. Anchored on zero, color-coded by sign.</li>
+  <li><b>Net Impact by age band — latest month.</b> Same pattern, across the nine harmonized age bands (<code>18-20</code> through <code>85+</code>).</li>
+</ol>
+
+<!-- --------------------------- Country --------------------------- -->
+<h3 id="screen-country">3.2 By country</h3>
+
+<p>Takes the same month as Overview but slices by country. Two visualizations
+plus one searchable table.</p>
+
+<h4>Top 12 countries by Net Impact Index</h4>
+<p>Horizontal bars, sorted descending. The "top 12" are the countries with
+the largest cumulative sample size (not necessarily the highest NII) — this
+prevents the ranking from being dominated by small-country noise near the
+min-N boundary. Each bar's label is the country's NII for that month.</p>
+
+<h4>Adoption rate × Net Impact — scatter</h4>
+<p>Same 12 countries. X-axis is <code>adoption_rate</code>, Y-axis is
+<code>net_impact_index</code>, dot area is proportional to
+<code>√n_respondents</code> so visual weight tracks statistical weight. The
+axes are meaningful on their own: dots in the upper-right quadrant are
+high-adoption, high-positive countries; lower-right are high-adoption but
+neutral-to-negative; upper-left are selective adopters who report
+strongly-positive experience.</p>
+
+<h4>Country-months table</h4>
+<p>A scrollable, searchable table of every (country, year, month) cell that
+cleared the min-N=50 filter. Columns: N, adoption rate, positive share,
+negative share, net impact. Sorted by NII descending. The search box filters
+on country name. Useful when someone asks "is India's NII up or down from
+last month?" without needing to refactor the chart.</p>
+
+<!-- --------------------------- Frequency --------------------------- -->
+<h3 id="screen-frequency">3.3 Frequency &amp; impact</h3>
+
+<p>This is the analytical tab — it addresses the causal-adjacent question
+at the heart of the tracker: <i>does more AI use associate with better or
+worse outcomes?</i></p>
+
+<h4>Global dose-response (latest month)</h4>
+<p>Line chart on the X-axis from <i>Never</i> to <i>Always</i>, Y-axis is NII
+at each frequency level. The <code>dose_response</code> field is a small
+JSON object written at ETL time: <code>{0: nii₀, 1: nii₁, …, 6: nii₆}</code>,
+where each level's NII is computed only on respondents at that exact
+frequency level who answered the impact question. The chart reveals whether
+the relationship is monotonic (more use → more net positive), threshold-like
+(jumps at a specific level), or U-shaped.</p>
+
+<h4>Dose-response by gender / by age band</h4>
+<p>The same curve, faceted by stratifier group. Each line is one group.
+The point is to surface heterogeneity — a globally-positive dose-response
+could still hide a subgroup where it reverses.</p>
+
+<h4>Frequency distribution over time — global</h4>
+<p>Stacked bar chart. Each month is one bar stretching from 0% to 100%,
+segmented by the seven frequency levels (Never, Rarely, Monthly, Weekly,
+Daily, Constantly, Always). Shows the trajectory of AI use intensity in
+the population, independent of impact.</p>
+
+<!-- --------------------------- About --------------------------- -->
+<h3 id="screen-about">3.4 Methodology</h3>
+
+<p>A plain-language summary of the source, exposure, outcome, index
+definition, suppression rule, and Phase 1 limitations. Stable — not
+expected to change month-to-month. This document is a deeper version of
+that tab.</p>
+
+<!-- ======================================================================= -->
+<h2 id="metrics">4. Metric definitions &amp; formulas</h2>
+
+<h3>4.1 Exposure — <code>ai_freq</code></h3>
+
+<p>A 7-level ordinal variable mapped to an integer for computation:</p>
+<table>
+  <thead><tr><th class="num">Int</th><th>Label</th><th>Interpretation</th></tr></thead>
+  <tbody>
+    <tr><td class="num">0</td><td>Never</td><td>Non-user baseline</td></tr>
+    <tr><td class="num">1</td><td>Rarely</td><td>Occasional, ad-hoc</td></tr>
+    <tr><td class="num">2</td><td>Monthly</td><td>Low habitual</td></tr>
+    <tr><td class="num">3</td><td>Weekly</td><td>Regular</td></tr>
+    <tr><td class="num">4</td><td>Daily</td><td>Daily-driver</td></tr>
+    <tr><td class="num">5</td><td>Constantly</td><td>In-flow, multiple times/day</td></tr>
+    <tr><td class="num">6</td><td>Always</td><td>Continuous / always-on</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 Adoption</h3>
+<p><b>Adoption rate</b> = share of respondents with <code>ai_freq ≥ 1</code>.</p>
+<span class="formula">adoption_rate = count(ai_freq ≥ 1) / n_respondents</span>
+<p>For each level ℓ ∈ {0…6} the ETL also writes <code>freq_share_ℓ</code> — the
+share of respondents at that exact level. The seven <code>freq_share_*</code>
+values sum to 1.</p>
+
+<h3>4.3 Outcome — impact flags</h3>
+
+<p><code>ai_impact_work</code> is a pipe-delimited multi-select. The
+normalizer splits it into seven boolean flags. Each flag is either 1 (the
+respondent chose it), 0 (they answered the question but didn't choose it),
+or NA (they didn't answer).</p>
+
+<table>
+  <thead><tr><th>Flag</th><th>Sign</th><th>Source option</th></tr></thead>
+  <tbody>
+    <tr><td><code>impact_improved_quality</code></td><td><span class="chip pos">positive</span></td><td>"Improved the quality of my work"</td></tr>
+    <tr><td><code>impact_new_opportunities</code></td><td><span class="chip pos">positive</span></td><td>"Created new opportunities"</td></tr>
+    <tr><td><code>impact_adaptation_pressure</code></td><td><span class="chip neg">negative</span></td><td>"Pressured me to adapt / keep up"</td></tr>
+    <tr><td><code>impact_job_anxiety</code></td><td><span class="chip neg">negative</span></td><td>"Made me anxious about my job"</td></tr>
+    <tr><td><code>impact_none</code></td><td><span class="chip">neutral</span></td><td>"No real impact"</td></tr>
+    <tr><td><code>impact_other</code></td><td><span class="chip">neutral</span></td><td>"Other"</td></tr>
+    <tr><td><code>impact_not_sure</code></td><td><span class="chip">neutral</span></td><td>"Not sure"</td></tr>
+  </tbody>
+</table>
+
+<div class="callout">
+<b>Denominator for impact metrics.</b> All <code>impact_share_*</code> metrics
+divide by the count of respondents who (a) are AI users and (b) answered the
+impact question. This is strictly smaller than <code>n_respondents</code>.
+When there are zero such people in a cell, every <code>impact_share_*</code>
+field is null and the chart simply skips that cell.
+</div>
+
+<h3>4.4 Share metrics</h3>
+<span class="formula">impact_share_X = count(impact_X = 1) / count(AI users with a non-null impact answer)</span>
+<p>Derived aggregates:</p>
+<span class="formula">positive_impact_share = impact_share_improved_quality + impact_share_new_opportunities <br>(capped per-respondent so a person marking both counts once)</span>
+<span class="formula">negative_impact_share = impact_share_adaptation_pressure + impact_share_job_anxiety <br>(same per-respondent cap)</span>
+
+<p>The per-respondent capping matters: because the question is multi-select,
+naïvely summing the individual share columns would double-count anyone who
+picked two positives or two negatives. The ETL computes the "any positive /
+any negative" flag at the respondent level before aggregating, so
+<code>positive_impact_share + negative_impact_share ≤ 1</code>.</p>
+
+<h3>4.5 Net Impact Index</h3>
+<span class="formula">net_impact_index = positive_impact_share − negative_impact_share</span>
+<p>Range is [−1, +1]. A value of 0 means positive and negative reports are
+balanced. Values above ~0.2 indicate a population that clearly leans
+positive; below ~−0.2, clearly negative.</p>
+
+<h3>4.6 Uncertainty — 95% Wilson CIs</h3>
+
+<p>Every share metric is accompanied by a Wilson 95% confidence interval.
+Wilson is preferred over the textbook normal-approximation CI because it
+behaves correctly near p = 0 and p = 1, and remains sensible for smallish
+n — neither of which is true of normal-approximation intervals.</p>
+
+<span class="formula">p̂_w = (x + z²/2) / (n + z²) <br>
+half_width = z·√( (x(n−x)/n + z²/4) / (n + z²)² ) · (n + z²) / (n + z²)</span>
+
+<p>With z = 1.96 for 95%. Stored as <code>&lt;metric&gt;_ci_low</code> /
+<code>&lt;metric&gt;_ci_high</code>. Today's preview doesn't draw these yet,
+but they are on disk and will power CI bands in the Framework build.</p>
+
+<h3>4.7 Dose-response</h3>
+
+<p>For each stratum cell, <code>dose_response</code> is serialized as a
+small JSON object:</p>
+<pre><code>{ "0": null, "1": 0.09, "2": 0.15, "3": 0.22,
+  "4": 0.30, "5": 0.36, "6": 0.40 }</code></pre>
+
+<p>Each value is the Net Impact Index computed <i>only</i> on respondents at
+that specific frequency level (ai_freq = ℓ) within that cell. Level 0 is
+always null by construction — non-users are not asked about impact.</p>
+
+<!-- ======================================================================= -->
+<h2 id="normalization">5. Normalization &amp; harmonization rules</h2>
+
+<h3>5.1 Age bands</h3>
+<p>Raw integer <code>age</code> is mapped to ordinal bands:</p>
+<table>
+  <thead><tr><th>Raw age</th><th>Band</th></tr></thead>
+  <tbody>
+    <tr><td>18–20</td><td><code>18-20</code></td></tr>
+    <tr><td>21–24</td><td><code>21-24</code></td></tr>
+    <tr><td>25–34</td><td><code>25-34</code></td></tr>
+    <tr><td>35–44</td><td><code>35-44</code></td></tr>
+    <tr><td>45–54</td><td><code>45-54</code></td></tr>
+    <tr><td>55–64</td><td><code>55-64</code></td></tr>
+    <tr><td>65–74</td><td><code>65-74</code></td></tr>
+    <tr><td>75–84</td><td><code>75-84</code></td></tr>
+    <tr><td>85+</td><td><code>85+</code></td></tr>
+  </tbody>
+</table>
+<p>Ages outside [13, 120] are rejected and logged; GMP's target is 18+ so
+values below 18 are treated as bad data.</p>
+
+<h3>5.2 Gender</h3>
+<p>Raw gender strings are lowercased, trimmed, and mapped:
+<code>Male / Female / Non-binary / Prefer not to say</code>. Empty or other
+values go to <code>Prefer not to say</code>.</p>
+
+<h3>5.3 Country aliases</h3>
+<p>Raw country strings require cleanup for two reasons:</p>
+<ol>
+  <li><b>Encoding mojibake.</b> Some responses arrive MacRoman-mangled (e.g., the Hindi rendering of "India" appears as a string of accented letters rather than Devanagari). The alias table maps those bytes back to <code>India</code>.</li>
+  <li><b>Pipe leakage.</b> Some country values carry the tail of another column, e.g. <code>"Korea| South"</code>. The alias table maps these to <code>South Korea</code>.</li>
+</ol>
+<p>Unmatched countries pass through as-is, so no row is dropped — they
+simply accumulate under their original string until the alias table catches
+up.</p>
+
+<!-- ======================================================================= -->
+<h2 id="stratification">6. Stratification &amp; suppression</h2>
+
+<h3>6.1 Eight stratum levels</h3>
+<p>Every metric is computed at eight levels of granularity. The preview only
+reads the first four; the pairwise and three-way levels exist on disk for
+future drill-downs:</p>
+<table>
+  <thead><tr><th>Stratum level</th><th>Cells (Apr 2026 run)</th><th>Suppressed (n &lt; 50)</th></tr></thead>
+  <tbody>
+    <tr><td><code>global</code></td><td class="num">28</td><td class="num">0</td></tr>
+    <tr><td><code>country</code></td><td class="num">5,051</td><td class="num">3,128 (62%)</td></tr>
+    <tr><td><code>gender</code></td><td class="num">128</td><td class="num">36 (28%)</td></tr>
+    <tr><td><code>age_band</code></td><td class="num">253</td><td class="num">2 (0.8%)</td></tr>
+    <tr><td><code>country_gender</code></td><td class="num">10,961</td><td class="num">7,840 (72%)</td></tr>
+    <tr><td><code>country_age_band</code></td><td class="num">25,114</td><td class="num">20,367 (81%)</td></tr>
+    <tr><td><code>gender_age_band</code></td><td class="num">1,005</td><td class="num">477 (47%)</td></tr>
+    <tr><td><code>country_gender_age_band</code></td><td class="num">45,824</td><td class="num">41,213 (90%)</td></tr>
+  </tbody>
+</table>
+
+<h3>6.2 Minimum-N rule</h3>
+<p>Any cell with <code>n_respondents &lt; 50</code> is tagged
+<code>suppressed = true</code> and has every derived metric set to null.
+It still occupies a row on disk (so downstream tools can see "we had data
+here, we chose not to publish") but it is filtered out by every chart.</p>
+
+<div class="callout note">
+<b>Why 50, not 30 or 100?</b> 50 is the smallest n at which a Wilson CI on a
+share near 50% has a half-width comfortably under ±0.15. Smaller thresholds
+produce too many bars that swing wildly month-to-month; larger thresholds
+erase too many smaller countries. 50 is a review-able starting point — if
+stakeholders want stricter suppression, it's a one-line config change.
+</div>
+
+<!-- ======================================================================= -->
+<h2 id="architecture">7. How the numbers get to the screen</h2>
+
+<p>The pipeline is a strict three-layer flow. Each layer talks to the next
+only through a named, versioned contract — no layer knows the internals of
+the layers on either side of it.</p>
+
+<pre><code>     CSV / Elasticsearch (raw)
+              │
+              ▼
+   ┌────────────────────────────┐
+   │   tracker/  (ETL)          │  Python 3.11, pandas, pyarrow
+   │   • Source adapter         │  one-line switch: csv → elasticsearch
+   │   • Normalization          │  ordinal maps, alias tables, age bands
+   │   • Metric computation     │  shares + Wilson CIs + dose-response
+   │   • Parquet writer         │  partitioned by level / year / month
+   └────────────────────────────┘
+              │  Parquet (stable contract)
+              ▼
+   ┌────────────────────────────┐
+   │  dashboard/  (preview)     │  Observable Plot + d3
+   │  • make_preview.py bakes   │  data inlined as &lt;script&gt; JSON
+   │    data into one HTML file │  → opens via file:// double-click
+   │  • Framework build (prod)  │  → static site for CDN delivery
+   └────────────────────────────┘
+              │
+              ▼
+         User's browser</code></pre>
+
+<h3>7.1 The Parquet layout</h3>
+<pre><code>tracker/output/v1/metrics/
+  stratum_level=global/year=2026/month=04/part-0.parquet
+  stratum_level=country/year=2026/month=04/part-0.parquet
+  stratum_level=gender/year=2026/month=04/part-0.parquet
+  stratum_level=age_band/year=2026/month=04/part-0.parquet
+  stratum_level=country_gender/...
+  ...</code></pre>
+<p>Versioned at the top (<code>v1/</code>) so a breaking change to the
+metric schema can live at <code>v2/</code> alongside the old contract while
+the dashboard is updated.</p>
+
+<h3>7.2 Two ways to view locally</h3>
+
+<h4>Option A — pre-baked file (fastest, no server)</h4>
+<pre><code>python3 tracker/make_preview.py
+# then double-click dashboard/preview.html</code></pre>
+<p>The script reads the Parquet layer, embeds the data as an inline JSON
+block in the HTML, and opens cleanly via <code>file://</code>. Plot + d3 are
+loaded from jsDelivr CDN but no data is fetched over the network.</p>
+
+<h4>Option B — local HTTP server (live Parquet)</h4>
+<pre><code>./run_dashboard.sh        # starts http.server on :8765</code></pre>
+<p>The DuckDB-WASM version reads Parquet directly — closer to the production
+path, but requires a browser that allows localhost HTTP (Safari's HTTPS-Only
+mode will block it; Chrome/Firefox work).</p>
+
+<h3>7.3 Phase-2 deployment (sketch, not yet built)</h3>
+<p>Same ETL, same contract, different host:</p>
+<ol>
+  <li>ETL runs on a schedule (cron / Railway job / AWS Lambda). Same <code>main.py</code>, different entry point.</li>
+  <li>Parquet is written to S3 under the same <code>v1/metrics/...</code> layout.</li>
+  <li>Observable Framework build produces the static site (<code>dashboard/dist/</code>).</li>
+  <li>Static site deploys to CloudFront (or Railway static hosting in the interim).</li>
+  <li>DuckDB-WASM in the browser reads Parquet from the CDN; no API server in the hot path.</li>
+</ol>
+
+<!-- ======================================================================= -->
+<h2 id="limits">8. Known limits &amp; what's next</h2>
+
+<h3>8.1 What Phase 1 is <i>not</i></h3>
+<ul>
+  <li><b>Not survey-weighted.</b> GMP's post-stratification weights are not yet applied, so between-country comparisons reflect GMP's sampling mix, not national populations.</li>
+  <li><b>Not causal.</b> Dose-response is an associational chart. Selection effects (who chooses to use AI constantly?) and reverse causation (people whose work has improved may be willing to use AI more) are not controlled for.</li>
+  <li><b>Not compositionally adjusted.</b> Month-over-month movement in a country's NII can partly reflect a change in who answered rather than a change in attitudes.</li>
+  <li><b>Not real-time.</b> Phase 1 is CSV-driven, weekly at best. Phase 2 moves to Elasticsearch.</li>
+</ul>
+
+<h3>8.2 Near-term additions</h3>
+<ol>
+  <li><b>Wilson CI bands on charts.</b> The data is already written; just needs to be rendered.</li>
+  <li><b>Downloadable summary report (PDF).</b> A per-month auto-generated brief with the top-line numbers and notable country movers.</li>
+  <li><b>Elasticsearch source adapter.</b> The <code>Source</code> interface is already in place; the stub at <code>src/sources/elasticsearch_source.py</code> raises <code>NotImplementedError</code> pending credentials.</li>
+  <li><b>Country alias table growth.</b> As the corpus sees new raw strings, the alias map expands. Today's unmatched countries surface in the table as-is so we can see what to add.</li>
+  <li><b>Survey weighting and simple causal adjustment.</b> Once (1–3) are done, the dose-response chart gets a weighted variant and an inverse-probability-weighted overlay.</li>
+</ol>
+
+<h3>8.3 What a stakeholder should ask of any chart</h3>
+<ol>
+  <li><b>What's the n behind this bar?</b> Listed in the country-months table; available on disk for any other view.</li>
+  <li><b>Is the gap outside the CI?</b> Wilson CIs are stored; we need to surface them.</li>
+  <li><b>Is this compositional?</b> Compare the stratified view (age band, gender) to the top-line. If the top-line moves but stratified views don't, that's composition.</li>
+  <li><b>Is the impact denominator stable?</b> Count of non-null impact respondents should be reported next to any impact share — a target for the next iteration.</li>
+</ol>
+
+<!-- ======================================================================= -->
+<h2 id="appendix">Appendix A — Reading the percentages correctly</h2>
+
+<p>The five KPI cards and the Impact Share Composition chart are the most
+easily misread parts of the dashboard. Every number is correct; the trap is
+that adjacent numbers live on different denominators and behave differently
+under composition. This appendix spells out the four most common confusions
+and how to avoid them. The examples use April 2026 global values.</p>
+
+<h3 id="appendix-cohorts">A.1 Different cards, different cohorts</h3>
+
+<p>The five headline KPIs do not share a denominator. Two of them are over
+the entire GMP sample; three are over a much smaller engaged subset.</p>
+
+<table>
+  <thead>
+    <tr><th>KPI</th><th>Value (Apr 2026)</th><th>Cohort (denominator)</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Respondents</td><td class="num">16,487</td><td>All GMP respondents that month</td></tr>
+    <tr><td>AI Adoption Rate</td><td class="num">77.2%</td><td>All GMP respondents</td></tr>
+    <tr><td>Positive-impact Share</td><td class="num">26.9%</td><td>AI users who answered the impact question (~3,200)</td></tr>
+    <tr><td>Negative-impact Share</td><td class="num">5.9%</td><td>Same as above</td></tr>
+    <tr><td>Net Impact Index</td><td class="num">+0.210</td><td>Same as above</td></tr>
+  </tbody>
+</table>
+
+<p>The impact cohort is much smaller than the full sample for a specific
+reason. The <code>ai_impact_work</code> question has an 80.5% NA rate — most
+respondents either weren't shown it on their survey cycle or skipped it. Of
+the ~19.5% who answered, effectively all are AI users (the question is
+shown conditionally). That leaves ~3,200 engaged AI users in April 2026,
+not the 12,700 you'd get from 77.2% of 16,487.</p>
+
+<div class="callout warn">
+<b>Practical rule.</b> When explaining an impact-share number, anchor it to
+the engaged cohort explicitly. Not: "26.9% of users had positive impact."
+Rather: "Of roughly 3,200 AI users who answered the impact question, 26.9%
+reported positive effects." The second phrasing is unambiguous and doesn't
+invite the reader to do wrong arithmetic against the 77.2% adoption rate.
+</div>
+
+<h3 id="appendix-nesting">A.2 Don't chain the percentages</h3>
+
+<p>The single most common error is computing "26.9% of 77.2%" = 20.8% and
+concluding that "20.8% of all respondents had a positive AI-impact
+experience." That number is wrong by roughly a factor of 5.</p>
+
+<p>Here's the actual nesting of cohorts that April:</p>
+<pre><code>All respondents                            16,487   (100.0%)
+    │
+    ├── Never used AI                      ~3,760   (22.8%)   ← not asked the impact Q
+    │
+    └── AI users                          ~12,728   (77.2%)
+            │
+            ├── Skipped the impact Q       ~9,500   (bulk of the 80.5% NA)
+            │
+            └── Answered the impact Q     ~3,200   ← denominator for impact shares
+                    │
+                    ├── Positive            ~860   (26.9% of 3,200)
+                    ├── Negative            ~190   ( 5.9% of 3,200)
+                    └── Neither / Other   ~2,150
+</code></pre>
+
+<p>The chain is <b>Adoption → Impact-answered → Positive</b>, not Adoption →
+Positive. The attrition between "AI user" and "Answered impact" is large
+and the headline percentages live after that attrition, not before.</p>
+
+<div class="callout">
+<b>If you need a whole-sample percentage</b> (e.g. "what share of all
+respondents reported positive AI experience"), you have to compute it
+explicitly: count positives directly from the respondent-level data and
+divide by 16,487. The current preview doesn't surface that number because
+for most policy questions, conditioning on "users who actually engaged with
+the question" is the right framing. But it's available from the raw data if
+a stakeholder insists.
+</div>
+
+<h3 id="appendix-pooling">A.3 How the "global" number is pooled</h3>
+
+<p>The global KPI is a <b>pooled</b> calculation across all respondents —
+not an average of country means. Each country contributes in exact proportion
+to its GMP sample size. A country with 50,000 responses carries 1,000× the
+weight of a country with 50 responses.</p>
+
+<p>Three weighting schemes, three different numbers. For illustration:</p>
+
+<table>
+  <thead>
+    <tr><th>Scheme</th><th>What it is</th><th>When to use it</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>Pooled (current)</b></td>
+      <td>Sum the numerator across all respondents, divide by the summed denominator. Large-sample countries dominate.</td>
+      <td>The honest headline for the GMP sample as delivered. Never call it "the world."</td>
+    </tr>
+    <tr>
+      <td>Country-averaged</td>
+      <td>Compute each country's share, then average the shares equally. Every country is one vote.</td>
+      <td>For "how does the average country feel about AI," disregarding size.</td>
+    </tr>
+    <tr>
+      <td>Population-weighted</td>
+      <td>Weight each country's share by its share of the world adult population (or some other frame).</td>
+      <td>For a true "what does humanity think" read. Requires post-stratification weights.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The dashboard currently reports pooled. Phase 2 will add country-averaged
+as a toggle and population-weighted once survey weights are in place. For
+now, label the KPI <i>"pooled GMP respondents"</i> when sharing outside the
+immediate project.</p>
+
+<h3 id="appendix-composition">A.4 Why the Impact Composition bars don't sum to the KPI</h3>
+
+<p>If you add the two green bars from the composition chart, you do
+<i>not</i> get the Positive-impact Share KPI:</p>
+
+<pre><code>  Improved quality      25.5%
+  New opportunities   +  4.3%
+  ─────────────────     ─────
+  Naïve sum             29.8%
+  Headline KPI says     26.9%
+  Gap                    2.9%
+</code></pre>
+
+<p>The gap is the share of respondents who flagged <i>both</i> positive
+options on the same response. <code>ai_impact_work</code> is multi-select —
+a person can check two boxes, and about 2.9% of April's engaged AI users
+did exactly that. The individual-flag bars count them in both green bars;
+the KPI counts them once.</p>
+
+<p>The same holds on the red side:</p>
+<pre><code>  Adaptation pressure    3.1%
+  Job anxiety          + 3.7%
+  ─────────────────     ─────
+  Naïve sum              6.8%
+  Headline KPI says      5.9%
+  Gap                    0.9%
+</code></pre>
+
+<p>About 0.9% of AI users flagged both pressure and anxiety. Correlated, as
+you'd expect psychologically, but the overlap is there and the headline
+KPI correctly de-duplicates it.</p>
+
+<div class="callout note">
+<b>Why the per-respondent cap is the right default.</b> The KPI asks "what
+fraction of users feel positive / negative" — one person, one vote. A
+respondent who reports both improved quality and new opportunities is still
+one positive-leaning person, not two. The ETL builds a respondent-level flag
+(<code>any_positive = improved_quality OR new_opportunities</code>) before
+aggregating, which guarantees
+<code>positive_impact_share + negative_impact_share ≤ 1</code>. Without the
+cap, the two could sum to more than 100%, and NII would no longer be bounded
+by [−1, +1].
+</div>
+
+<h3 id="appendix-no-impact">A.5 What "No impact" at 56% actually means</h3>
+
+<p>"No impact" is the largest single category in the composition chart at
+roughly 56.2%. Unlike the positive and negative flags, "No impact" is
+designed to be mutually exclusive — a respondent who says "no impact"
+shouldn't also check "improved quality" in a well-formed survey. So the
+56% can be read cleanly: <b>of every 100 engaged AI users, 56 say AI
+has had no real effect on their work.</b></p>
+
+<p>This is arguably the most policy-relevant number on the composition
+chart. It's the "yes I use it, but it hasn't actually changed my job"
+segment, which is distinct from both the enthusiasts and the skeptics.
+Tracking whether that 56% shrinks over time — and which direction the
+departures flow (toward positive or toward negative) — is one of the
+more interesting longitudinal questions the tracker will eventually
+answer.</p>
+
+<p>Putting the full composition together for April 2026:</p>
+
+<table>
+  <thead>
+    <tr><th>Segment</th><th>Share</th><th>Reading</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>No impact</td><td class="num">~56%</td><td>Users, but not (yet) transformed users</td></tr>
+    <tr><td>Any positive (improved quality or new opportunities)</td><td class="num">~27%</td><td>Perceiving benefit, overwhelmingly about work quality rather than new career paths</td></tr>
+    <tr><td>Any negative (adaptation pressure or job anxiety)</td><td class="num">~6%</td><td>Perceiving cost — small but non-trivial</td></tr>
+    <tr><td>Not sure / Other / overlap</td><td class="num">~11%</td><td>Unclassified residual</td></tr>
+  </tbody>
+</table>
+
+<h3 id="appendix-dose">A.6 The dose-response chart is associational</h3>
+
+<p>The Net-Impact-by-frequency curve on the Frequency &amp; impact tab is
+borrowed from pharmacology terminology: the "dose" is AI-use frequency,
+the "response" is Net Impact Index. In your April data the curve rises
+monotonically from about +0.08 at <i>Rarely</i> to about +0.40 at
+<i>Always</i>.</p>
+
+<p>That shape is suggestive, but it is <b>associational, not causal</b>.
+Three alternative explanations sit alongside the "AI use causes benefit"
+reading, and nothing in a cross-sectional survey can distinguish them:</p>
+
+<ol>
+  <li><b>Reverse causation.</b> People whose work is going well (for reasons unrelated to AI) may adopt AI more readily because they have the slack to experiment.</li>
+  <li><b>Selection.</b> "Always" users are selected for tech enthusiasm, which correlates with positive framing of technology generally.</li>
+  <li><b>Confounding.</b> Younger, more educated, or more tech-adjacent respondents both use AI more and report better work outcomes; AI use is a marker, not a cause.</li>
+</ol>
+
+<p>The monotonic rise is <i>consistent with</i> AI being genuinely helpful.
+It is <i>not evidence</i> that it is. A Phase 3 pass with panel design
+(same respondents over time) or inverse-probability weighting could get
+closer to a causal read. Until then, present dose-response as "users who
+report more AI use also report more positive impact" — true, and useful,
+but carefully not the same claim as "AI use makes work better."</p>
+
+<h3 id="appendix-checks">A.7 Two sanity checks for any percentage on the dashboard</h3>
+
+<ol>
+  <li><b>What's the denominator?</b> If it's an impact share, it's the ~3,200 engaged AI users, not the 16,487 total respondents. If it's adoption or share of respondents, it's the 16,487 total.</li>
+  <li><b>Does the composition sum to more than the headline?</b> If yes, that's multi-select overlap — the gap tells you how many respondents picked more than one option in the group.</li>
+</ol>
+
+<p>Applying both checks to every published number will catch nearly every
+misread this dashboard can produce.</p>
+
+<footer>
+  Global Mind Project · Sapien Labs · AI Use Impact Tracker · Phase 1 companion guide
+</footer>
+
+</main>
+</body>
+</html>
