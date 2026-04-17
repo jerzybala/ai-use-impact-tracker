@@ -609,7 +609,7 @@ function render() {
     const minN = +document.getElementById("scatter-min-n").value;
     const data = (window.__scatterCountryData || []).filter(d => d.n_respondents >= minN);
     document.getElementById("chart-country-scatter").replaceChildren(Plot.plot({
-      height: 380, marginLeft: 80, marginRight: 30,
+      height: 380, marginLeft: 80, marginRight: 120,
       x: { grid: true, label: "AI adoption rate", tickFormat: d => (d*100).toFixed(0)+"%" },
       y: { grid: true, label: "Net Impact Index" },
       marks: [
@@ -706,11 +706,7 @@ function render() {
         Plot.ruleX([0], { stroke: "#bbb" }),
         Plot.barX(sel.selCountry, { y: "country_clean", x: "net_impact_index",
           fill: d => d.net_impact_index >= 0 ? "#1a7f4e" : "#b3261e",
-          sort: { y: "x", reverse: true } }),
-        Plot.text(sel.selCountry, { y: "country_clean", x: "net_impact_index",
-          text: d => fmtSigned(d.net_impact_index, 2),
-          dx: d => d.net_impact_index >= 0 ? 4 : -4,
-          textAnchor: d => d.net_impact_index >= 0 ? "start" : "end" })
+          sort: { y: "x", reverse: true } })
       ]
     }));
 
