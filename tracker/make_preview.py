@@ -619,7 +619,7 @@ function render() {
           fill: d => d.net_impact_index >= 0 ? "#1a7f4e" : "#b3261e",
           fillOpacity: 0.7, stroke: "white" }),
         Plot.text(data, { x: "adoption_rate", y: "net_impact_index",
-          text: "country_clean", dx: -12, textAnchor: "end", fontSize: 11 })
+          text: "country_clean", dx: 12, textAnchor: "start", fontSize: 11 })
       ]
     }));
   }
