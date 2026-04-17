@@ -17,4 +17,5 @@ RUN mkdir -p /app/data
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:8080", "--timeout", "300", "--workers", "2", "--threads", "4"]
+# Railway injects $PORT at runtime — must use shell form so it expands
+CMD gunicorn app:app --bind "0.0.0.0:$PORT" --timeout 300 --workers 2 --threads 4
