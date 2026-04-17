@@ -286,6 +286,7 @@ function render() {
     "adoption_rate", "positive_impact_share", "negative_impact_share", "net_impact_index",
     "impact_share_improved_quality", "impact_share_new_opportunities",
     "impact_share_adaptation_pressure", "impact_share_job_anxiety",
+    "impact_share_job_loss", "impact_share_reduced_income",
     "impact_share_none", "impact_share_other", "impact_share_not_sure",
     "freq_share_0","freq_share_1","freq_share_2","freq_share_3",
     "freq_share_4","freq_share_5","freq_share_6"
@@ -626,6 +627,8 @@ function render() {
       { short: "New opportunities",   long: "Created new job or income opportunities",          share: selected.impact_share_new_opportunities,   cat: "pos" },
       { short: "Adaptation pressure", long: "Increased pressure to adapt or work faster",       share: selected.impact_share_adaptation_pressure, cat: "neg" },
       { short: "Job anxiety",         long: "Made me worry about the future of my job or industry", share: selected.impact_share_job_anxiety,     cat: "neg" },
+      { short: "Job loss",            long: "Caused me to lose my job",                          share: selected.impact_share_job_loss,            cat: "neg" },
+      { short: "Reduced income",      long: "Reduced my income or made it harder to find work",  share: selected.impact_share_reduced_income,      cat: "neg" },
       { short: "No impact",           long: "No impact",                                        share: selected.impact_share_none,                cat: "neu" },
       { short: "Other",               long: "Another impact not listed here",                   share: selected.impact_share_other,               cat: "neu" },
       { short: "Not sure",            long: "Not sure",                                         share: selected.impact_share_not_sure,            cat: "neu" }

@@ -42,17 +42,20 @@ IMPACT_OPTIONS = {
     "Created new job or income opportunities": "impact_new_opportunities",
     "Increased pressure to adapt or work faster": "impact_adaptation_pressure",
     "Made me worry about the future of my job or industry": "impact_job_anxiety",
+    "Caused me to lose my job": "impact_job_loss",
+    "Reduced my income or made it harder to find work": "impact_reduced_income",
     "Another impact not listed here": "impact_other",
     "Not sure": "impact_not_sure",
     # translation variants observed in data
     "No estoy seguro/a": "impact_not_sure",
     "Not No estoy seguro/a": "impact_not_sure",
+    "Nenhum impacto": "impact_none",
 }
 
 ALL_IMPACT_FLAGS = sorted(set(IMPACT_OPTIONS.values())) + ["impact_na"]
 
 POSITIVE_FLAGS = ["impact_improved_quality", "impact_new_opportunities"]
-NEGATIVE_FLAGS = ["impact_adaptation_pressure", "impact_job_anxiety"]
+NEGATIVE_FLAGS = ["impact_adaptation_pressure", "impact_job_anxiety", "impact_job_loss", "impact_reduced_income"]
 
 
 def parse_impact_work(s: pd.Series) -> pd.DataFrame:
