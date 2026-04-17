@@ -34,16 +34,32 @@ from flask import (
 # ---------------------------------------------------------------------------
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "tracker"))
-
-from tracker.main import run as run_etl                       # noqa: E402
-from tracker.make_preview import load_level, HTML_TEMPLATE     # noqa: E402
 import json, math                                              # noqa: E402
+
+# Defer heavy tracker imports — if they fail, the app still starts and
+# shows a useful error in Railway's runtime logs instead of a silent crash.
+run_etl = None
+HTML_TEMPLATE = None
+try:
+    from tracker.main import run as run_etl                    # noqa: E402
+    from tracker.make_preview import HTML_TEMPLATE             # noqa: E402
+    print("[app] Tracker imports OK", flush=True)
+except Exception as exc:
+    print(f"[app] WARNING: tracker import failed: {exc}", flush=True)
+    import traceback; traceback.print_exc()
 
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 2 * 1024 * 1024 * 1024  # 2 GB upload limit
+print(f"[app] Flask app created, PORT={os.environ.get('PORT','(not set)')}", flush=True)
+
+
+@app.route("/health")
+def health():
+    """Simple health check that always responds."""
+    return "ok"
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", HERE / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI Use Impact Tracker — Phase 1 Scoping</title>
+<style>
+  :root {
+    --ink: #222;
+    --muted: #666;
+    --accent: #1F3A5F;
+    --accent2: #2E5C8A;
+    --rule: #d6dde4;
+    --chip: #E8EEF4;
+  }
+  html { background: #f5f6f8; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: var(--ink);
+    line-height: 1.55;
+    max-width: 860px;
+    margin: 32px auto;
+    padding: 48px 56px;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border-radius: 6px;
+  }
+  header { text-align: center; border-bottom: 1px solid var(--rule); padding-bottom: 24px; margin-bottom: 28px; }
+  header h1 { color: var(--accent); font-size: 28px; margin: 0 0 6px; }
+  header .sub { color: var(--accent2); font-size: 17px; margin-bottom: 8px; }
+  header .meta { color: var(--muted); font-style: italic; font-size: 14px; }
+  h2 { color: var(--accent); font-size: 20px; margin-top: 32px; border-bottom: 1px solid var(--rule); padding-bottom: 6px; }
+  h3 { color: var(--accent2); font-size: 16px; margin-top: 22px; }
+  p { margin: 10px 0; }
+  ul { margin: 8px 0 14px 22px; }
+  li { margin-bottom: 6px; }
+  table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; font-size: 14px; }
+  th, td { border: 1px solid var(--rule); padding: 8px 12px; text-align: left; vertical-align: top; }
+  th { background: var(--chip); font-weight: 600; color: var(--accent); }
+  tbody tr:nth-child(even) { background: #fafbfc; }
+  .kpi { display: inline-block; background: var(--chip); color: var(--accent); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-size: 13px; }
+  footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--rule); color: var(--muted); font-size: 12px; text-align: center; }
+  code { background: #f0f2f5; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>AI Use Impact Tracker</h1>
+  <div class="sub">Phase 1 — High-Level Scoping &amp; Data Assessment</div>
+  <div class="meta">Prepared for Jerzy Bala, Chief Data Scientist, Sapien Labs &nbsp;•&nbsp; 14 April 2026</div>
+</header>
+
+<h2>1. Executive Summary</h2>
+<p>This document captures a Phase 1 assessment of the Global Mind Project (GMP) data extract intended to power an <em>AI Use Impact Tracker</em>. The tracker will monitor how the frequency of AI assistant use (<code>ai_freq</code>) relates to self-reported impact on work (<code>ai_impact_work</code>), stratified by country, gender, and age group, and refreshed on a monthly cadence. This document describes the source data, the structural characteristics of the two focal columns, the data-quality issues that must be resolved before reporting, the proposed metric set, the dashboard architecture, and the deliverables expected at the close of Phase 1.</p>
+
+<h2>2. Source Data Overview</h2>
+<p>The working dataset is <code>SAMPLE DATA.xlsx</code>, a single-sheet extract drawn from the GMP survey platform.</p>
+<table>
+  <thead><tr><th>Property</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td>Rows (respondents)</td><td>75,404</td></tr>
+    <tr><td>Columns</td><td>204</td></tr>
+    <tr><td>Time range</td><td>January – April 2026 (4 months)</td></tr>
+    <tr><td>Monthly volume</td><td>≈ 16,000 – 24,000 responses per month</td></tr>
+    <tr><td>Languages present</td><td>English, Spanish, French, Hindi (mixed within columns)</td></tr>
+    <tr><td>Top countries (by N)</td><td>Egypt 6.7k, Algeria 5.4k, India 4.9k, Venezuela 4.2k, Argentina 3.8k</td></tr>
+    <tr><td>Focal exposure column</td><td><code>ai_freq</code> (7-level ordinal)</td></tr>
+    <tr><td>Focal outcome column</td><td><code>ai_impact_work</code> (multi-select, pipe-delimited)</td></tr>
+    <tr><td>Stratifiers available</td><td><code>country</code>, <code>gender</code>, <code>biological_sex</code>, <code>gender_identity</code>, <code>age</code></td></tr>
+  </tbody>
+</table>
+
+<h2>3. Structure of the Focal Columns</h2>
+
+<h3>3.1  ai_freq (exposure)</h3>
+<p>The <code>ai_freq</code> column is a clean 7-level ordinal scale suitable for dose-response modelling once mapped to integers. The observed distribution across the 75,404 rows is:</p>
+<table>
+  <thead><tr><th>Level (ordered)</th><th>Count</th><th>Share</th></tr></thead>
+  <tbody>
+    <tr><td>I have never used an AI assistant</td><td>20,625</td><td>27.4%</td></tr>
+    <tr><td>Rarely</td><td>18,986</td><td>25.2%</td></tr>
+    <tr><td>A few times a month</td><td>7,666</td><td>10.2%</td></tr>
+    <tr><td>Several days a week</td><td>12,333</td><td>16.4%</td></tr>
+    <tr><td>Several times a day</td><td>8,256</td><td>10.9%</td></tr>
+    <tr><td>Constantly</td><td>5,560</td><td>7.4%</td></tr>
+    <tr><td>All of the time</td><td>1,640</td><td>2.2%</td></tr>
+    <tr><td>Untranslated / N/A</td><td>338</td><td>0.4%</td></tr>
+  </tbody>
+</table>
+<p>Roughly <span class="kpi">37%</span> of the sample uses AI at least several days a week, and <span class="kpi">27%</span> have never used an AI assistant — a meaningful non-user comparison group. A small number of rows contain untranslated labels ("Constamment", "Constantly (when awake)") that must be canonicalised to the base seven levels.</p>
+
+<h3>3.2  ai_impact_work (outcome)</h3>
+<p><code>ai_impact_work</code> is <strong>not</strong> a single scalar. It is a multi-select field where respondents can choose any combination of the atomic impact options, delimited with the pipe character. The extract contains <strong>329 unique string combinations</strong>. The atomic options appear to be:</p>
+<ul>
+  <li>No impact</li>
+  <li>Improved my work quality or output</li>
+  <li>Created new job or income opportunities</li>
+  <li>Increased pressure to adapt or work faster</li>
+  <li>Made me worry about the future of my job or industry</li>
+  <li>Another impact not listed here</li>
+  <li>Not sure</li>
+</ul>
+<p>This structural fact is the single most important design constraint for the tracker: because respondents can simultaneously report a positive impact (e.g. <em>"Improved my work quality"</em>) and a negative one (e.g. <em>"Made me worry about the future of my job"</em>), there is no meaningful single-dimensional impact score derived directly from the raw field. The tracker must represent the outcome as a vector of binary flags and then construct composite indicators on top.</p>
+
+<h2>4. Data-Quality Issues to Resolve</h2>
+<p>Four issues must be addressed in the cleaning layer before any aggregation is performed.</p>
+<p><strong>Multilingual contamination.</strong> Both <code>ai_freq</code> and <code>ai_impact_work</code> contain Spanish, French, and other language fragments embedded in otherwise-English columns (e.g. "Constamment", "No estoy seguro/a"). Country names also appear in non-Latin scripts (e.g. a Hindi rendering of "India"). A normalisation dictionary is required.</p>
+<p><strong>Inconsistent age coding.</strong> The <code>age</code> column is mixed: younger respondents (18, 19, 20) are captured as raw integers, while older respondents are captured in ordinal bands ("25-34", "35-44", "55-64", etc.). All values must be harmonised to a common banding scheme before stratified reporting.</p>
+<p><strong>Ambiguous N/A semantics.</strong> Approximately 27% of <code>ai_impact_work</code> values are "N/A". This likely conflates <em>"respondent does not use AI"</em> with <em>"respondent is not in employment"</em> with <em>"missing data"</em>. The tracker must distinguish these cases, typically by conditioning on <code>ai_freq</code> and employment status before interpreting an N/A.</p>
+<p><strong>Country-cell sparsity.</strong> Country × gender × age-band cells will be thin outside the top 10–15 countries. The tracker must enforce a minimum-N rule (suggested floor: 50 respondents per cell per month) and suppress or pool under-represented cells rather than reporting unstable estimates.</p>
+
+<h2>5. Proposed Metric Layer</h2>
+<p>To reconcile the multi-select outcome with the need for a trendable KPI, the metric layer will expose three tiers of indicators. Tier one is a set of seven binary indicators — one per atomic impact category — each reported as a share of respondents within the stratum. Tier two is two composite shares: a <em>positive-impact share</em> (union of "Improved work quality" and "New opportunities") and a <em>negative-impact share</em> (union of "Job anxiety" and "Adaptation pressure"). Tier three is a single headline KPI, the <span class="kpi">Net Impact Index</span>, defined as positive-impact share minus negative-impact share, which can range from −1 to +1 and is stable for month-over-month trending.</p>
+<p>Alongside the outcome indicators, the tracker will report AI adoption rate (share reporting any non-zero <code>ai_freq</code>), the full frequency distribution, and a dose-response summary: mean Net Impact Index plotted against <code>ai_freq</code> level within each stratum. Confidence intervals will be computed per metric using standard survey-weighted formulas, and the minimum-N suppression rule will be applied uniformly across the dashboard.</p>
+
+<h2>6. Dashboard Architecture</h2>
+<p>The tracker is designed as three decoupled layers so each can be tested and evolved independently.</p>
+<table>
+  <thead><tr><th>Layer</th><th>Responsibility</th><th>Proposed Technology</th></tr></thead>
+  <tbody>
+    <tr><td>Data layer</td><td>Monthly ingest, language normalisation, age harmonisation, pipe-delimited parsing, tidy long-format emission at (respondent × month × stratifiers) grain.</td><td>Python (pandas / Polars)</td></tr>
+    <tr><td>Metric layer</td><td>Aggregated indicators per stratum per month with CIs, min-N suppression, and a rolling baseline for change-detection.</td><td>DuckDB on Parquet</td></tr>
+    <tr><td>Presentation layer</td><td>Interactive dashboard with global time series, country small-multiples, stratum drill-downs, and a "what changed this month" anomaly panel.</td><td>Streamlit / Plotly Dash (prototype); Power BI / Tableau (stakeholder v2)</td></tr>
+  </tbody>
+</table>
+
+<h2>7. Methodological Considerations</h2>
+<p>Three methodological cautions apply regardless of implementation choices. First, because AI use is self-selected, any observed association between <code>ai_freq</code> and <code>ai_impact_work</code> should be interpreted descriptively unless adjusted for confounders (propensity weighting or at minimum a covariate-stratified view is recommended for any causal reading). Second, monthly trends in a stratum can shift because the <em>composition</em> of respondents changed, not because attitudes changed; a Oaxaca-style decomposition or demographic re-weighting should be used whenever a month-over-month shift is reported as material. Third, because <code>ai_impact_work</code> is ordinal in sentiment but categorical in encoding, the full distribution (not only the mean Net Impact Index) should always be available one click away in the dashboard.</p>
+
+<h2>8. Phase 1 Deliverables</h2>
+<ul>
+  <li><strong>Data profile report:</strong> completeness, value ranges, and cell-size diagnostics for <code>ai_freq</code>, <code>ai_impact_work</code>, and all stratifiers.</li>
+  <li><strong>Cleaning / ETL script:</strong> reproducible pipeline that ingests the monthly <code>.xlsx</code> and emits the tidy long table.</li>
+  <li><strong>Metric specification document:</strong> formal definitions, denominators, CIs, and suppression rules for every KPI.</li>
+  <li><strong>Prototype dashboard:</strong> one-month end-to-end demonstration of the three-layer architecture with at least the top 10 countries.</li>
+</ul>
+
+<h2>9. Recommended Next Step</h2>
+<p>Before we move into build, the single highest-value alignment is on the <strong>Metric Specification</strong>. Once the definitions of "positive impact", "negative impact", the Net Impact Index, and the minimum-N suppression rule are agreed, the rest of the pipeline (data layer, metric layer, dashboard) follows mechanically. A short working session or a written metric-spec review is recommended as the immediate next step.</p>
+
+<footer>AI Use Impact Tracker — Phase 1 Scoping  •  Sapien Labs</footer>
+
+</body>
+</html>
