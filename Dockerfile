@@ -13,9 +13,6 @@ COPY . .
 ENV DATA_DIR=/app/data
 RUN mkdir -p /app/data
 
-# Persistent data volume
-VOLUME /app/data
-
 # Railway injects PORT at runtime; default to 8080 for local dev
 ENV PORT=8080
 
