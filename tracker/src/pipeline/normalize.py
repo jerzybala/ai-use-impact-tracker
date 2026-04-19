@@ -57,6 +57,22 @@ ALL_IMPACT_FLAGS = sorted(set(IMPACT_OPTIONS.values())) + ["impact_na"]
 POSITIVE_FLAGS = ["impact_improved_quality", "impact_new_opportunities"]
 NEGATIVE_FLAGS = ["impact_adaptation_pressure", "impact_job_anxiety", "impact_job_loss", "impact_reduced_income"]
 
+# Tara's weighted AI Impact Index (v2).
+# Each flag gets a signed weight; the per-respondent score is the sum of
+# weights for all flags they selected, then averaged over the impact
+# denominator.  Range is roughly [-1, +1] but not symmetric.
+IMPACT_WEIGHTS = {
+    "impact_job_loss":            -1.0,
+    "impact_new_opportunities":   +1.0,
+    "impact_improved_quality":    +0.5,
+    "impact_adaptation_pressure": -0.5,
+    "impact_reduced_income":      -0.75,
+    "impact_job_anxiety":         -0.25,
+    "impact_none":                 0.0,
+    "impact_not_sure":             0.0,
+    "impact_other":                0.0,
+}
+
 
 def parse_impact_work(s: pd.Series) -> pd.DataFrame:
     """

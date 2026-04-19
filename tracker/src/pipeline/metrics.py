@@ -12,6 +12,7 @@ import pandas as pd
 
 from .normalize import (
     ALL_IMPACT_FLAGS, POSITIVE_FLAGS, NEGATIVE_FLAGS, AI_FREQ_LABEL,
+    IMPACT_WEIGHTS,
 )
 
 # §6
@@ -119,8 +120,26 @@ def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
             _share(denom_df["is_positive"], "positive_impact_share")
             _share(denom_df["is_negative"], "negative_impact_share")
             rec["net_impact_index"] = rec["positive_impact_share"] - rec["negative_impact_share"]
+
+            # Tara's weighted AI Impact Index (v2)
+            # Per-respondent score = sum of IMPACT_WEIGHTS[flag] for each True flag
+            # Then average across the impact denominator.
+            weight_cols = [c for c in ALL_IMPACT_FLAGS if c != "impact_na" and c in IMPACT_WEIGHTS]
+            weights_arr = np.array([IMPACT_WEIGHTS[c] for c in weight_cols])
+            per_resp = denom_df[weight_cols].values.astype(float) @ weights_arr
+            rec["weighted_impact_index"] = float(np.mean(per_resp))
+            if len(per_resp) > 1:
+                sem = float(np.std(per_resp, ddof=1) / math.sqrt(len(per_resp)))
+                rec["weighted_impact_index_ci_low"] = rec["weighted_impact_index"] - 1.96 * sem
+                rec["weighted_impact_index_ci_high"] = rec["weighted_impact_index"] + 1.96 * sem
+            else:
+                rec["weighted_impact_index_ci_low"] = None
+                rec["weighted_impact_index_ci_high"] = None
         else:
             rec["net_impact_index"] = None
+            rec["weighted_impact_index"] = None
+            rec["weighted_impact_index_ci_low"] = None
+            rec["weighted_impact_index_ci_high"] = None
 
         # Dose-response: net_impact_index by ai_freq level
         dose = {}

@@ -99,7 +99,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   nav a { color: var(--accent2); text-decoration: none; font-weight: 500; font-size: 14px; cursor: pointer; padding: 6px 10px; border-radius: 6px; }
   nav a.active { background: var(--chip); color: var(--accent); }
   h2 { color: var(--accent); font-size: 18px; margin: 28px 0 10px; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin-bottom: 24px; }
   @media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
   .card { background: #fff; padding: 16px 18px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
   .card .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -168,6 +168,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div class="card"><div class="label">Positive-impact Share</div><div class="value" id="kpi-pos" style="color:var(--pos)">—</div><div class="sub">quality ↑ or new opportunities</div></div>
     <div class="card"><div class="label">Negative-impact Share</div><div class="value" id="kpi-neg" style="color:var(--neg)">—</div><div class="sub">adaptation pressure or job anxiety</div></div>
     <div class="card"><div class="label">Net Impact Index</div><div class="value" id="kpi-net">—</div><div class="sub">positive − negative, range [−1, 1]</div></div>
+    <div class="card"><div class="label">Weighted Impact Index</div><div class="value" id="kpi-wii">—</div><div class="sub">Tara v2 — flag-weighted score</div></div>
   </div>
 
   <div class="panel"><h3>Positive and Negative impact share over time — global</h3>
@@ -176,11 +177,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   </div>
 
   <div class="two-col">
+    <div class="panel"><h3>Weighted Impact Index over time — global</h3>
+      <p class="muted" style="margin:-4px 0 8px">Tara v2 index: each impact flag carries a signed weight (job loss = −1, new opportunities = +1, etc.). Per-respondent scores averaged across the impact denominator.</p>
+      <div id="chart-wii-time"></div>
+    </div>
     <div class="panel"><h3>AI adoption rate — global</h3><div id="chart-adoption"></div></div>
-    <div class="panel"><h3>Impact share composition — <span class="sel-month">—</span>
-        <button id="comp-label-toggle" class="label-toggle" title="Toggle between short labels and survey wording">Survey wording</button>
-      </h3><div id="chart-impact-composition"></div></div>
   </div>
+
+  <div class="panel"><h3>Impact share composition — <span class="sel-month">—</span>
+      <button id="comp-label-toggle" class="label-toggle" title="Toggle between short labels and survey wording">Survey wording</button>
+    </h3><div id="chart-impact-composition"></div></div>
 
   <div class="two-col">
     <div class="panel"><h3>Net Impact by gender — <span class="sel-month">—</span></h3><div id="chart-gender"></div></div>
@@ -292,7 +298,7 @@ function render() {
   // (3-6 mo) with stable NA rates, this stays within ~1pp of exact.
   // ======================================================================
   const NUMERIC_METRIC_KEYS = [
-    "adoption_rate", "positive_impact_share", "negative_impact_share", "net_impact_index",
+    "adoption_rate", "positive_impact_share", "negative_impact_share", "net_impact_index", "weighted_impact_index",
     "impact_share_improved_quality", "impact_share_new_opportunities",
     "impact_share_adaptation_pressure", "impact_share_job_anxiety",
     "impact_share_job_loss", "impact_share_reduced_income",
@@ -408,11 +414,13 @@ function render() {
     };
   }
 
-  // ----- Twin-line + freq-stack precomputed once (data itself is month-indep) -----
+  // ----- Twin-line + freq-stack + WII precomputed once (data itself is month-indep) -----
   const trendLong = [];
+  const wiiTrend = [];
   for (const r of globalWithImpact) {
     if (r.positive_impact_share != null) trendLong.push({ month: ym(r), share: r.positive_impact_share, series: "Positive", nii: r.net_impact_index });
     if (r.negative_impact_share != null) trendLong.push({ month: ym(r), share: r.negative_impact_share, series: "Negative", nii: r.net_impact_index });
+    if (r.weighted_impact_index != null) wiiTrend.push({ month: ym(r), wii: r.weighted_impact_index });
   }
   const latestMonthKey = ym(latest);
   const freqLong = [];
@@ -451,6 +459,24 @@ function render() {
       ]
     }));
 
+    document.getElementById("chart-wii-time").replaceChildren(Plot.plot({
+      height: 260, marginLeft: 70, marginRight: 80, marginBottom: 50,
+      y: { label: "Weighted Impact Index", labelAnchor: "center", labelArrow: "none", grid: true, zero: true },
+      x: { type: "band", label: null, ticks: thinnedTicks, tickFormat: fmtMonthLabel, tickRotate: -30 },
+      marks: [
+        indicator,
+        Plot.ruleY([0], { stroke: "#ccc", strokeWidth: 1 }),
+        Plot.lineY(wiiTrend, { x: "month", y: "wii", stroke: "#6366f1", strokeWidth: 2.5 }),
+        Plot.dot(wiiTrend, { x: "month", y: "wii", fill: d => d.wii >= 0 ? "#1a7f4e" : "#b3261e", r: 5 }),
+        Plot.text(wiiTrend.filter(d => d.month === latestMonthKey), {
+          x: "month", y: "wii",
+          text: d => (d.wii >= 0 ? "+" : "") + d.wii.toFixed(3),
+          dx: 10, textAnchor: "start",
+          fill: "#6366f1", fontWeight: 600, fontSize: 12
+        })
+      ]
+    }));
+
     document.getElementById("chart-adoption").replaceChildren(Plot.plot({
       height: 260, marginBottom: 50,
       y: { grid: true, label: "% using AI at all", tickFormat: d => (d*100).toFixed(0)+"%", domain: [0,1] },
@@ -482,7 +508,8 @@ function render() {
     { key: "adoption_rate",         label: "Adoption",   cls: "num", fmt: d => d.adoption_rate == null ? "" : (d.adoption_rate*100).toFixed(1)+"%" },
     { key: "positive_impact_share", label: "Positive",   cls: "num", fmt: d => d.positive_impact_share == null ? "" : (d.positive_impact_share*100).toFixed(1)+"%" },
     { key: "negative_impact_share", label: "Negative",   cls: "num", fmt: d => d.negative_impact_share == null ? "" : (d.negative_impact_share*100).toFixed(1)+"%" },
-    { key: "net_impact_index",      label: "Net Impact", cls: "num", fmt: d => d.net_impact_index == null ? "" : (d.net_impact_index>=0?"+":"") + d.net_impact_index.toFixed(3) }
+    { key: "net_impact_index",      label: "Net Impact", cls: "num", fmt: d => d.net_impact_index == null ? "" : (d.net_impact_index>=0?"+":"") + d.net_impact_index.toFixed(3) },
+    { key: "weighted_impact_index", label: "Weighted", cls: "num", fmt: d => d.weighted_impact_index == null ? "" : (d.weighted_impact_index>=0?"+":"") + d.weighted_impact_index.toFixed(3) }
   ];
   let tableSortKey = "net_impact_index";
   let tableSortAsc = false;  // default: highest NII first
@@ -504,7 +531,8 @@ function render() {
       </tr></thead><tbody>
       ${sorted.slice(0, 400).map(d => `<tr>
         ${TABLE_COLS.map(c => {
-          const extra = c.key === "net_impact_index" ? (d.net_impact_index >= 0 ? " pos" : " neg") : "";
+          const extra = c.key === "net_impact_index" ? (d.net_impact_index >= 0 ? " pos" : " neg")
+            : c.key === "weighted_impact_index" ? (d.weighted_impact_index >= 0 ? " pos" : " neg") : "";
           return `<td class="${c.cls}${extra}">${c.fmt(d)}</td>`;
         }).join("")}
       </tr>`).join("")}
@@ -653,6 +681,10 @@ function render() {
     netEl.textContent = fmtSigned(selected.net_impact_index, 3);
     netEl.style.color = selected.net_impact_index == null ? "var(--muted)"
       : (selected.net_impact_index >= 0 ? "var(--pos)" : "var(--neg)");
+    const wiiEl = document.getElementById("kpi-wii");
+    wiiEl.textContent = fmtSigned(selected.weighted_impact_index, 3);
+    wiiEl.style.color = selected.weighted_impact_index == null ? "var(--muted)"
+      : (selected.weighted_impact_index >= 0 ? "var(--pos)" : "var(--neg)");
 
     // --- Time-series with selection indicator ---
     renderTimeSeries(sel);
