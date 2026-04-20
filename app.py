@@ -40,10 +40,12 @@ import json, math                                              # noqa: E402
 # shows a useful error in Railway's runtime logs instead of a silent crash.
 run_etl = None
 HTML_TEMPLATE = None
+HTML_TEMPLATE_V2 = None
 try:
     from tracker.main import run as run_etl                    # noqa: E402
     from tracker.make_preview import HTML_TEMPLATE             # noqa: E402
-    print("[app] Tracker imports OK", flush=True)
+    from tracker.make_preview_v2 import HTML_TEMPLATE_V2       # noqa: E402
+    print("[app] Tracker imports OK (v1 + v2)", flush=True)
 except Exception as exc:
     print(f"[app] WARNING: tracker import failed: {exc}", flush=True)
     import traceback; traceback.print_exc()
@@ -132,7 +134,10 @@ UPLOAD_PAGE = r"""
     <h2>Previous dashboards</h2>
     <div class="sessions">
       {% for s in sessions %}
-      <a href="/dashboard/{{ s.id }}">{{ s.label }}</a>
+      <div style="display:flex;gap:16px;padding:4px 0">
+        <a href="/dashboard-v1/{{ s.id }}">{{ s.label }} (v1)</a>
+        <a href="/dashboard-v2/{{ s.id }}">{{ s.label }} (v2 weighted)</a>
+      </div>
       {% endfor %}
     </div>
   </div>
@@ -193,7 +198,7 @@ async function pollJob(jobId) {
     setTimeout(() => pollJob(jobId), 1500);
   } else if (data.status === "done") {
     status.className = "done";
-    status.innerHTML = '✓ Dashboard ready — <a href="/dashboard/' + jobId + '">open dashboard</a>';
+    status.innerHTML = '✓ Dashboard ready — <a href="/dashboard-v1/' + jobId + '">v1 (original)</a> · <a href="/dashboard-v2/' + jobId + '">v2 (weighted)</a>';
     btn.disabled = false;
   } else {
     status.className = "error";
@@ -316,11 +321,18 @@ def _bake_dashboard(job_dir: Path):
     }
 
     payload = _json.dumps(data, separators=(",", ":"))
-    html = HTML_TEMPLATE.replace("__DATA_JSON__", payload)
 
     out_dir = job_dir / "dashboard"
     out_dir.mkdir(parents=True, exist_ok=True)
-    (out_dir / "preview.html").write_text(html, encoding="utf-8")
+
+    # Bake v1
+    html_v1 = HTML_TEMPLATE.replace("__DATA_JSON__", payload)
+    (out_dir / "preview.html").write_text(html_v1, encoding="utf-8")
+
+    # Bake v2 (weighted index)
+    if HTML_TEMPLATE_V2:
+        html_v2 = HTML_TEMPLATE_V2.replace("__DATA_JSON__", payload)
+        (out_dir / "preview_v2.html").write_text(html_v2, encoding="utf-8")
 
 
 @app.route("/job/<job_id>")
@@ -333,11 +345,26 @@ def job_status(job_id):
 
 
 @app.route("/dashboard/<job_id>")
-def dashboard(job_id):
-    """Serve the baked dashboard HTML."""
+def dashboard_legacy(job_id):
+    """Legacy route — redirect to v1."""
+    return redirect(url_for("dashboard_v1", job_id=job_id))
+
+
+@app.route("/dashboard-v1/<job_id>")
+def dashboard_v1(job_id):
+    """Serve the v1 (original) baked dashboard."""
     html_path = DATA_DIR / job_id / "dashboard" / "preview.html"
     if not html_path.exists():
-        return "Dashboard not found", 404
+        return "Dashboard v1 not found", 404
+    return send_file(str(html_path), mimetype="text/html")
+
+
+@app.route("/dashboard-v2/<job_id>")
+def dashboard_v2(job_id):
+    """Serve the v2 (weighted index) baked dashboard."""
+    html_path = DATA_DIR / job_id / "dashboard" / "preview_v2.html"
+    if not html_path.exists():
+        return "Dashboard v2 not found", 404
     return send_file(str(html_path), mimetype="text/html")
 
 
@@ -345,9 +372,18 @@ def dashboard(job_id):
 # Convenience: serve the locally-baked dashboard if it exists
 # ---------------------------------------------------------------------------
 @app.route("/latest")
+@app.route("/latest-v1")
 def latest():
-    """Redirect to the most recently baked dashboard."""
+    """Redirect to the most recently baked v1 dashboard."""
     local_html = HERE / "dashboard" / "preview.html"
+    if local_html.exists():
+        return send_file(str(local_html), mimetype="text/html")
+
+
+@app.route("/latest-v2")
+def latest_v2():
+    """Redirect to the most recently baked v2 dashboard."""
+    local_html = HERE / "dashboard" / "preview_v2.html"
     if local_html.exists():
         return send_file(str(local_html), mimetype="text/html")
     # Otherwise redirect to index
