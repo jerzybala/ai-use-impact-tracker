@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Use Impact Tracker — README</title>
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --rule:#e5e7eb; --chip:#E8EEF4; --code-bg:#0f172a; --code-ink:#e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color:var(--ink); line-height:1.6; }
+  .shell { max-width:880px; margin:0 auto; padding:48px 40px 80px; background:#fff; min-height:100vh; box-shadow:0 1px 2px rgba(0,0,0,0.06); }
+  header { padding-bottom:18px; border-bottom:1px solid var(--rule); margin-bottom:28px; }
+  h1 { color:var(--accent); margin:0 0 6px; font-size:28px; }
+  .lede { color:var(--muted); margin:0; font-size:15px; }
+  h2 { color:var(--accent); font-size:20px; margin:32px 0 10px; padding-top:8px; border-top:1px solid var(--rule); }
+  h2:first-of-type { border-top:none; padding-top:0; }
+  h3 { color:var(--accent2); font-size:16px; margin:20px 0 6px; }
+  p { margin:0 0 12px; }
+  a { color:var(--accent2); }
+  ul { margin:0 0 12px; padding-left:22px; }
+  li { margin-bottom:6px; }
+  code { background:var(--chip); padding:1px 6px; border-radius:4px; font-family:"SF Mono", Menlo, Consolas, monospace; font-size:13px; color:var(--accent); }
+  pre { background:var(--code-bg); color:var(--code-ink); padding:14px 18px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.55; }
+  pre code { background:transparent; color:inherit; padding:0; }
+  strong { color:var(--accent); }
+  .nav { font-size:13px; color:var(--muted); margin-bottom:20px; }
+  .nav a { color:var(--accent2); margin-right:14px; text-decoration:none; }
+  .nav a:hover { text-decoration:underline; }
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule); font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <h1>AI Use Impact Tracker — ETL + dashboard baker</h1>
+    <p class="lede">Pipeline that converts a GMP data extract into a versioned Parquet metric layer, plus a single-page HTML dashboard baker for a self-contained world-map view.</p>
+  </header>
+
+  <div class="nav">
+    <a href="#layout">Layout</a>
+    <a href="#design">Design principle</a>
+    <a href="#local">Local run</a>
+    <a href="#container">Container</a>
+    <a href="#lambda">Lambda</a>
+    <a href="#bake">Bake the dashboard</a>
+    <a href="#features">Dashboard features</a>
+    <a href="#downstream">Downstream</a>
+  </div>
+
+  <h2 id="layout">Layout</h2>
+<pre><code>tracker/
+├── metric_spec.md          Authoritative definitions (§1–§9)
+├── main.py                 ETL entry — CLI, Docker, and Lambda all call run()
+├── lambda_handler.py       AWS Lambda wrapper
+├── make_dashboard.py       Bakes ../dashboard/preview.html (single-page, world-map)
+├── Dockerfile              Railway / ECS / Fargate container
+├── requirements.txt
+└── src/
+    ├── sources/            Data source adapters (the swap seam)
+    │   ├── base.py                 Abstract Source + REQUIRED_COLUMNS
+    │   ├── csv_source.py           Phase 1 (local / S3 CSV)
+    │   └── elasticsearch_source.py Phase 2 stub (Sapien Labs ES)
+    ├── pipeline/           Pure-function DataFrame transforms (no I/O)
+    │   ├── normalize.py            Implements metric_spec §4
+    │   └── metrics.py              Implements metric_spec §5–§6
+    └── publish/
+        └── parquet_writer.py       Implements metric_spec §7 output contract</code></pre>
+  <p><code>make_preview.py</code> and <code>make_preview_v2.py</code> are the previous v1/v2 bakers; superseded by <code>make_dashboard.py</code>.</p>
+
+  <h2 id="design">Design principle</h2>
+  <p>Only <code>src/sources/</code> knows where data comes from. Everything downstream operates on a DataFrame. To migrate CSV → Elasticsearch, swap one config line; the normaliser, metric layer, and publisher are unchanged.</p>
+
+  <h2 id="local">Local run</h2>
+<pre><code>pip install -r requirements.txt
+
+python main.py \
+  --source csv \
+  --path "../SAMPLE DATA .xlsx" \
+  --out ./output</code></pre>
+  <p>Outputs land at <code>output/v1/metrics/stratum_level=.../year=YYYY/month=MM/part-0.parquet</code>.</p>
+
+  <h2 id="container">Container run (Railway / ECS)</h2>
+<pre><code>docker build -t ai-use-tracker .
+docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
+  <p>Mount the input CSV and output directory into <code>/data</code>.</p>
+
+  <h2 id="lambda">Lambda run</h2>
+  <p>Package <code>main.py</code> + <code>lambda_handler.py</code> + <code>src/</code> as a Lambda layer or container image. Invoke with payload matching the <code>run()</code> config dict:</p>
+<pre><code>{
+  "source": "csv",
+  "source_config": {"path": "s3://sapien-gmp/exports/latest.csv"},
+  "output_root": "s3://sapien-gmp/tracker/"
+}</code></pre>
+
+  <h2 id="bake">Bake the dashboard</h2>
+  <p>After the ETL has written Parquet output, generate the single-page HTML dashboard:</p>
+<pre><code>python make_dashboard.py</code></pre>
+  <p>This loads the <code>global</code>, <code>country</code>, <code>country_gender</code>, <code>country_age_band</code>, and <code>country_gender_age_band</code> strata, embeds them as inline JSON, and writes <code>../dashboard/preview.html</code>. The file is fully self-contained (Observable Plot, d3, topojson, and world-atlas are loaded from CDN at view time) — open it by double-click, or serve it via the Flask app at the project root (<code>app.py</code>).</p>
+
+  <h2 id="features">Dashboard features</h2>
+  <ul>
+    <li><strong>Top KPIs</strong>: Weighted Impact Index, respondents, AI adoption rate, impact denominator — all reflecting the active filters.</li>
+    <li><strong>World choropleth</strong> colored by one of 10 metrics (see <code>metric_spec.md</code> §5 for definitions).</li>
+    <li><strong>Filters</strong>: month + period (Single / Last 3 / Last 6), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
+    <li><strong>Country click</strong> opens a detail card with all impact shares and the dose-response curve.</li>
+  </ul>
+
+  <h2 id="downstream">Downstream consumer (alternative)</h2>
+  <p>The Parquet output can also be read directly by external dashboards (Observable Framework, Evidence.dev) via DuckDB-WASM. The Parquet layout in <code>metric_spec.md §7</code> is the stable contract.</p>
+
+  <footer>Global Mind Project — Sapien Labs · See <code>metric_spec.md</code> for the authoritative metric definitions.</footer>
+</div>
+</body>
+</html>
