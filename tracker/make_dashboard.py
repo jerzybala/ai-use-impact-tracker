@@ -444,6 +444,28 @@ function renderKPIs() {
   $("kpi-denom").textContent = fmtNum(totalDenom);
 }
 
+// Domain fit: stretch the color scale to the actual visible range so the
+// map doesn't wash out when values cluster near zero. Use a small floor
+// so single-country views or tight clusters still show some contrast.
+function fitDomain(values, meta) {
+  const finite = values.filter(v => Number.isFinite(v));
+  if (finite.length === 0) return meta.domain;
+  // Use 2nd/98th percentiles to ignore lone outliers.
+  const sorted = finite.slice().sort((a, b) => a - b);
+  const q = p => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(p * (sorted.length - 1))))];
+  const lo = q(0.02), hi = q(0.98);
+  if (meta.signed) {
+    const a = Math.max(Math.abs(lo), Math.abs(hi), 0.05);
+    return [-a, a];
+  }
+  if (meta.isShare) {
+    return [Math.max(0, lo - 0.02), Math.max(hi, lo + 0.05, 0.1)];
+  }
+  // Unsigned numeric (freq_mean)
+  const pad = Math.max((hi - lo) * 0.1, 0.1);
+  return [Math.max(meta.domain[0], lo - pad), Math.min(meta.domain[1], hi + pad)];
+}
+
 // Map
 function renderMap() {
   if (!countriesGeo) return;
@@ -461,6 +483,7 @@ function renderMap() {
     rowByName[key] = r;
   }
 
+  const fitted = fitDomain(Object.values(valueByName), meta);
   const fmt = v => fmtMetric(v, meta);
 
   const plot = Plot.plot({
@@ -468,10 +491,10 @@ function renderMap() {
     width: 1200,
     height: 540,
     margin: 0,
-    color: { type: "linear", scheme: meta.scheme, domain: meta.domain, unknown: "#ececec" },
+    color: { type: "linear", scheme: meta.scheme, domain: fitted, clamp: true, unknown: "#e5e7eb" },
     marks: [
       Plot.geo(countriesGeo, {
-        fill: d => valueByName[d.properties.name] ?? "#ececec",
+        fill: d => valueByName[d.properties.name],
         stroke: "#ffffff",
         strokeWidth: 0.4,
         title: d => {
@@ -503,9 +526,10 @@ function renderMap() {
   $("map-title").textContent = "World map — " + meta.label;
   $("map-meta").textContent = `${rows.length.toLocaleString()} country rows · cells under n=50 are suppressed`;
 
-  // Legend
-  $("legend-min").textContent = meta.isShare ? "0%" : (meta.domain[0] === 0 ? "0" : meta.domain[0]);
-  $("legend-max").textContent = meta.isShare ? "100%" : (meta.signed ? "+" + meta.domain[1] : meta.domain[1]);
+  // Legend — labels reflect the fitted domain
+  const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(2);
+  $("legend-min").textContent = fmtBound(fitted[0]);
+  $("legend-max").textContent = fmtBound(fitted[1]);
   const interp = d3[`interpolate${meta.scheme}`];
   if (interp) {
     const stops = Array.from({length: 11}, (_, i) => interp(i / 10));
