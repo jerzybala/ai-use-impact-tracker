@@ -203,6 +203,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </div>
     </div>
     <div class="group">
+      <label>Period</label>
+      <select id="window-select" title="Pool the selected month with prior months (weighted by respondent count)">
+        <option value="1">Single month</option>
+        <option value="3">Last 3 months</option>
+        <option value="6">Last 6 months</option>
+      </select>
+    </div>
+    <div class="group">
       <label>Color map by</label>
       <select id="metric-select">
         <option value="weighted_impact_index">Weighted Impact Index</option>
@@ -335,6 +343,7 @@ const METRIC_META = {
 const $ = id => document.getElementById(id);
 const monthSel = $("month-select"), metricSel = $("metric-select");
 const genderSel = $("gender-select"), ageSel = $("age-select"), freqSel = $("freq-select");
+const winSel = $("window-select");
 const prevBtn = $("prev-month"), nextBtn = $("next-month"), resetBtn = $("reset-btn");
 
 // Months
@@ -359,6 +368,7 @@ nextBtn.addEventListener("click", () => {
 resetBtn.addEventListener("click", () => {
   metricSel.value = "weighted_impact_index";
   genderSel.value = ""; ageSel.value = ""; freqSel.value = "";
+  winSel.value = "1";
   hideDetail(); render();
 });
 
@@ -380,15 +390,87 @@ function pickStratum() {
   return { rows: DATA.country, gender: null, age: null };
 }
 
+// The set of (year-month) keys covered by the current Period selection.
+function selectedMonths() {
+  const w = +winSel.value || 1;
+  const i = months.indexOf(monthSel.value);
+  if (i < 0) return new Set([monthSel.value]);
+  const start = Math.max(0, i - w + 1);
+  return new Set(months.slice(start, i + 1));
+}
+
+// Pool rows by (country, gender, age) using respondent-count weights.
+// adoption_rate and freq_mean weight by n_respondents; impact metrics
+// (and dose_response levels) weight by n_impact_denominator.
+const POOL_FIELDS = {
+  adoption_rate: "n_respondents",
+  freq_mean: "n_respondents",
+  weighted_impact_index: "n_impact_denominator",
+  net_impact_index: "n_impact_denominator",
+  positive_impact_share: "n_impact_denominator",
+  negative_impact_share: "n_impact_denominator",
+  impact_share_improved_quality: "n_impact_denominator",
+  impact_share_new_opportunities: "n_impact_denominator",
+  impact_share_adaptation_pressure: "n_impact_denominator",
+  impact_share_job_anxiety: "n_impact_denominator",
+  impact_share_job_loss: "n_impact_denominator",
+  impact_share_reduced_income: "n_impact_denominator",
+  impact_share_none: "n_impact_denominator",
+  impact_share_other: "n_impact_denominator",
+  impact_share_not_sure: "n_impact_denominator",
+};
+
+function poolByCountry(rs) {
+  const groups = new Map();
+  for (const r of rs) {
+    const key = `${r.country_clean ?? ""}|${r.gender_clean ?? ""}|${r.age_band ?? ""}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  }
+  const out = [];
+  for (const [, rows] of groups) {
+    const head = rows[0];
+    const o = {
+      country_clean: head.country_clean,
+      gender_clean: head.gender_clean,
+      age_band: head.age_band,
+      n_respondents: rows.reduce((s, r) => s + (r.n_respondents || 0), 0),
+      n_impact_denominator: rows.reduce((s, r) => s + (r.n_impact_denominator || 0), 0),
+    };
+    for (const [f, wf] of Object.entries(POOL_FIELDS)) {
+      let num = 0, den = 0;
+      for (const r of rows) {
+        const v = r[f], wt = r[wf] || 0;
+        if (v != null && wt > 0) { num += v * wt; den += wt; }
+      }
+      o[f] = den > 0 ? num / den : null;
+    }
+    o.dose_response = {};
+    for (const lvl of [1,2,3,4,5,6]) {
+      let num = 0, den = 0;
+      for (const r of rows) {
+        const v = r.dose_response?.[lvl];
+        const wt = r.n_impact_denominator || 0;
+        if (v != null && wt > 0) { num += v * wt; den += wt; }
+      }
+      o.dose_response[lvl] = den > 0 ? num / den : null;
+    }
+    out.push(o);
+  }
+  return out;
+}
+
 function currentRows() {
-  const [y, m] = monthSel.value.split("-").map(Number);
+  const sel = selectedMonths();
   const { rows, gender, age } = pickStratum();
-  return rows.filter(r => {
-    if (r.year !== y || r.month !== m) return false;
+  const filtered = rows.filter(r => {
+    const ym = `${r.year}-${String(r.month).padStart(2,"0")}`;
+    if (!sel.has(ym)) return false;
     if (gender && r.gender_clean !== gender) return false;
     if (age && r.age_band !== age) return false;
     return true;
   });
+  return sel.size > 1 ? poolByCountry(filtered) : filtered;
 }
 
 function activeMetricMeta() {
@@ -405,8 +487,17 @@ function metricForRow(r) {
 }
 
 // Filter summary string
+function periodLabel() {
+  const sel = [...selectedMonths()].sort();
+  if (sel.length <= 1) return monthSel.options[monthSel.selectedIndex].textContent;
+  const fmt = ym => {
+    const [y, m] = ym.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("en", {month: "short", year: "2-digit"});
+  };
+  return `${fmt(sel[0])} – ${fmt(sel[sel.length - 1])}`;
+}
 function filterSummary() {
-  const parts = [monthSel.options[monthSel.selectedIndex].textContent];
+  const parts = [periodLabel()];
   if (genderSel.value) parts.push(genderSel.value);
   if (ageSel.value) parts.push("Age " + ageSel.value);
   if (freqSel.value !== "") parts.push("Freq: " + freqSel.options[freqSel.selectedIndex].textContent);
@@ -592,7 +683,7 @@ function render() {
   renderMap();
 }
 
-[metricSel, genderSel, ageSel, freqSel, monthSel].forEach(el => el.addEventListener("change", render));
+[metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", render));
 render();
 </script>
 </body>
