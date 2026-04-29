@@ -471,11 +471,13 @@ function renderMap() {
     width: 1200,
     height: 540,
     margin: 0,
-    color: { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#e5e7eb" },
+    color: { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#f3f4f6" },
     marks: [
+      // Sphere outline so the globe is visible even when most countries lack data.
+      Plot.sphere({ stroke: "#cbd5e1", strokeWidth: 0.5, fill: "#fbfcfd" }),
       Plot.geo(countriesGeo, {
         fill: d => valueByName[d.properties.name],
-        stroke: "#ffffff",
+        stroke: "#94a3b8",
         strokeWidth: 0.4,
         title: d => {
           const v = valueByName[d.properties.name];
