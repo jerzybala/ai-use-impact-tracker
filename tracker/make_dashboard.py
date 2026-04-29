@@ -316,17 +316,20 @@ const NAME_ALIASES = {
 };
 const atlasName = n => NAME_ALIASES[n] ?? n;
 
+// Domains chosen so the visible color spread reflects realistic between-country
+// variation; outliers are clamped (color.clamp:true) instead of stretching the
+// scale. The static [-1,1] / [0,1] bounds left almost everything washed out.
 const METRIC_META = {
-  weighted_impact_index: { label:"Weighted Impact Index", domain:[-1,1], scheme:"PiYG", isShare:false, signed:true },
-  net_impact_index:      { label:"Net Impact Index",      domain:[-1,1], scheme:"PiYG", isShare:false, signed:true },
-  adoption_rate:         { label:"AI Adoption Rate",      domain:[0,1],  scheme:"Blues", isShare:true,  signed:false },
-  freq_mean:             { label:"Frequency Mean",        domain:[0,6],  scheme:"Blues", isShare:false, signed:false },
-  impact_share_improved_quality:    { label:"Improved Quality (share)",    domain:[0,1], scheme:"Greens", isShare:true, signed:false },
-  impact_share_new_opportunities:   { label:"New Opportunities (share)",   domain:[0,1], scheme:"Greens", isShare:true, signed:false },
-  impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", domain:[0,1], scheme:"Reds",   isShare:true, signed:false },
-  impact_share_job_anxiety:         { label:"Job Anxiety (share)",         domain:[0,1], scheme:"Reds",   isShare:true, signed:false },
-  impact_share_job_loss:            { label:"Job Loss (share)",            domain:[0,1], scheme:"Reds",   isShare:true, signed:false },
-  impact_share_reduced_income:      { label:"Reduced Income (share)",      domain:[0,1], scheme:"Reds",   isShare:true, signed:false },
+  weighted_impact_index: { label:"Weighted Impact Index", domain:[-0.3, 0.3], scheme:"PiYG",   isShare:false, signed:true  },
+  net_impact_index:      { label:"Net Impact Index",      domain:[-0.5, 0.5], scheme:"PiYG",   isShare:false, signed:true  },
+  adoption_rate:         { label:"AI Adoption Rate",      domain:[0, 1],      scheme:"Blues",  isShare:true,  signed:false },
+  freq_mean:             { label:"Frequency Mean",        domain:[1, 5],      scheme:"Blues",  isShare:false, signed:false },
+  impact_share_improved_quality:    { label:"Improved Quality (share)",    domain:[0, 0.6],  scheme:"Greens", isShare:true, signed:false },
+  impact_share_new_opportunities:   { label:"New Opportunities (share)",   domain:[0, 0.4],  scheme:"Greens", isShare:true, signed:false },
+  impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
+  impact_share_job_anxiety:         { label:"Job Anxiety (share)",         domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
+  impact_share_job_loss:            { label:"Job Loss (share)",            domain:[0, 0.15], scheme:"Reds",   isShare:true, signed:false },
+  impact_share_reduced_income:      { label:"Reduced Income (share)",      domain:[0, 0.2],  scheme:"Reds",   isShare:true, signed:false },
 };
 
 const $ = id => document.getElementById(id);
@@ -444,28 +447,6 @@ function renderKPIs() {
   $("kpi-denom").textContent = fmtNum(totalDenom);
 }
 
-// Domain fit: stretch the color scale to the actual visible range so the
-// map doesn't wash out when values cluster near zero. Use a small floor
-// so single-country views or tight clusters still show some contrast.
-function fitDomain(values, meta) {
-  const finite = values.filter(v => Number.isFinite(v));
-  if (finite.length === 0) return meta.domain;
-  // Use 2nd/98th percentiles to ignore lone outliers.
-  const sorted = finite.slice().sort((a, b) => a - b);
-  const q = p => sorted[Math.min(sorted.length - 1, Math.max(0, Math.floor(p * (sorted.length - 1))))];
-  const lo = q(0.02), hi = q(0.98);
-  if (meta.signed) {
-    const a = Math.max(Math.abs(lo), Math.abs(hi), 0.05);
-    return [-a, a];
-  }
-  if (meta.isShare) {
-    return [Math.max(0, lo - 0.02), Math.max(hi, lo + 0.05, 0.1)];
-  }
-  // Unsigned numeric (freq_mean)
-  const pad = Math.max((hi - lo) * 0.1, 0.1);
-  return [Math.max(meta.domain[0], lo - pad), Math.min(meta.domain[1], hi + pad)];
-}
-
 // Map
 function renderMap() {
   if (!countriesGeo) return;
@@ -483,7 +464,6 @@ function renderMap() {
     rowByName[key] = r;
   }
 
-  const fitted = fitDomain(Object.values(valueByName), meta);
   const fmt = v => fmtMetric(v, meta);
 
   const plot = Plot.plot({
@@ -491,7 +471,7 @@ function renderMap() {
     width: 1200,
     height: 540,
     margin: 0,
-    color: { type: "linear", scheme: meta.scheme, domain: fitted, clamp: true, unknown: "#e5e7eb" },
+    color: { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#e5e7eb" },
     marks: [
       Plot.geo(countriesGeo, {
         fill: d => valueByName[d.properties.name],
@@ -526,10 +506,10 @@ function renderMap() {
   $("map-title").textContent = "World map — " + meta.label;
   $("map-meta").textContent = `${rows.length.toLocaleString()} country rows · cells under n=50 are suppressed`;
 
-  // Legend — labels reflect the fitted domain
-  const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(2);
-  $("legend-min").textContent = fmtBound(fitted[0]);
-  $("legend-max").textContent = fmtBound(fitted[1]);
+  // Legend — labels reflect the active domain (with clamp)
+  const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(1);
+  $("legend-min").textContent = fmtBound(meta.domain[0]);
+  $("legend-max").textContent = fmtBound(meta.domain[1]);
   const interp = d3[`interpolate${meta.scheme}`];
   if (interp) {
     const stops = Array.from({length: 11}, (_, i) => interp(i / 10));
