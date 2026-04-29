@@ -447,6 +447,22 @@ function renderKPIs() {
   $("kpi-denom").textContent = fmtNum(totalDenom);
 }
 
+// Build an intensified interpolator: skip the near-white tail of the
+// scheme so even the lowest data values render as a recognisable color
+// (instead of blending with the gray "no data" fill).
+function makeInterp(meta) {
+  const base = d3[`interpolate${meta.scheme}`];
+  if (!base) return null;
+  if (meta.signed) {
+    // Diverging: pull both ends toward saturated; middle stays light but not pure white.
+    return t => base(t <= 0.5
+      ? 0.04 + (0.5 - 0.04) * (t / 0.5)
+      : 0.5 + (0.96 - 0.5) * ((t - 0.5) / 0.5));
+  }
+  // Sequential: start at 22% of the scheme so low values aren't white.
+  return t => base(0.22 + 0.74 * t);
+}
+
 // Map
 function renderMap() {
   if (!countriesGeo) return;
@@ -465,19 +481,23 @@ function renderMap() {
   }
 
   const fmt = v => fmtMetric(v, meta);
+  const interp = makeInterp(meta);
+  const colorOpts = interp
+    ? { type: "linear", interpolate: interp, domain: meta.domain, clamp: true, unknown: "#cbd5e1" }
+    : { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#cbd5e1" };
 
   const plot = Plot.plot({
     projection: "equal-earth",
     width: 1200,
     height: 540,
     margin: 0,
-    color: { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#f3f4f6" },
+    color: colorOpts,
     marks: [
       // Sphere outline so the globe is visible even when most countries lack data.
-      Plot.sphere({ stroke: "#cbd5e1", strokeWidth: 0.5, fill: "#fbfcfd" }),
+      Plot.sphere({ stroke: "#94a3b8", strokeWidth: 0.5, fill: "#ffffff" }),
       Plot.geo(countriesGeo, {
         fill: d => valueByName[d.properties.name],
-        stroke: "#94a3b8",
+        stroke: "#64748b",
         strokeWidth: 0.4,
         title: d => {
           const v = valueByName[d.properties.name];
@@ -512,7 +532,6 @@ function renderMap() {
   const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(1);
   $("legend-min").textContent = fmtBound(meta.domain[0]);
   $("legend-max").textContent = fmtBound(meta.domain[1]);
-  const interp = d3[`interpolate${meta.scheme}`];
   if (interp) {
     const stops = Array.from({length: 11}, (_, i) => interp(i / 10));
     $("legend-swatch").style.background = `linear-gradient(to right, ${stops.join(",")})`;
