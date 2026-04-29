@@ -1,16 +1,17 @@
-# AI Use Impact Tracker — ETL
+# AI Use Impact Tracker — ETL + dashboard baker
 
-Phase 1 pipeline that converts a GMP data extract into a versioned Parquet
-metric layer ready to be consumed by a static dashboard (Observable
-Framework or Evidence.dev) via DuckDB-WASM.
+Pipeline that converts a GMP data extract into a versioned Parquet
+metric layer, plus a single-page HTML dashboard baker for a
+self-contained world-map view.
 
 ## Layout
 
 ```
 tracker/
-├── metric_spec.md          Authoritative definitions (§1–§8)
-├── main.py                 Entry point — CLI, Docker, and Lambda all call run()
+├── metric_spec.md          Authoritative definitions (§1–§9)
+├── main.py                 ETL entry — CLI, Docker, and Lambda all call run()
 ├── lambda_handler.py       AWS Lambda wrapper
+├── make_dashboard.py       Bakes ../dashboard/preview.html (single-page, world-map)
 ├── Dockerfile              Railway / ECS / Fargate container
 ├── requirements.txt
 └── src/
@@ -24,6 +25,8 @@ tracker/
     └── publish/
         └── parquet_writer.py       Implements metric_spec §7 output contract
 ```
+
+`make_preview.py` and `make_preview_v2.py` are the previous v1/v2 bakers; superseded by `make_dashboard.py`.
 
 ## Design principle
 
@@ -66,8 +69,36 @@ container image. Invoke with payload matching the `run()` config dict:
 }
 ```
 
-## Downstream consumer
+## Bake the dashboard
 
-The Parquet output is read by the dashboard (Observable Framework
-recommended) via DuckDB-WASM. The dashboard is a separate project; this
-ETL's only contract with it is the Parquet layout in `metric_spec.md §7`.
+After the ETL has written Parquet output, generate the single-page
+HTML dashboard:
+
+```bash
+python make_dashboard.py
+```
+
+This loads the `global`, `country`, `country_gender`, `country_age_band`,
+and `country_gender_age_band` strata, embeds them as inline JSON, and
+writes `../dashboard/preview.html`. The file is fully self-contained
+(Observable Plot, d3, topojson, and world-atlas are loaded from CDN at
+view time) — open it by double-click, or serve it via the Flask app
+at the project root (`app.py`).
+
+## Dashboard features
+
+- **Top KPIs**: Weighted Impact Index, respondents, AI adoption rate,
+  impact denominator — all reflecting the active filters.
+- **World choropleth** colored by one of 10 metrics (see `metric_spec.md`
+  §5 for definitions).
+- **Filters**: month + period (Single / Last 3 / Last 6), color-by
+  metric, gender, age band, frequency. Filter combinations select the
+  appropriate precomputed stratum, so every value shown is exact.
+- **Country click** opens a detail card with all impact shares and the
+  dose-response curve.
+
+## Downstream consumer (alternative)
+
+The Parquet output can also be read directly by external dashboards
+(Observable Framework, Evidence.dev) via DuckDB-WASM. The Parquet
+layout in `metric_spec.md §7` is the stable contract.
