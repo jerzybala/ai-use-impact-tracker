@@ -201,6 +201,18 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .ts-detail-block .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
 
   .empty { color:var(--muted); font-style:italic; padding:14px; text-align:center; }
+
+  .map-tip {
+    position:fixed; pointer-events:none; z-index:1000;
+    background:#fff; border:1px solid var(--rule); border-radius:6px;
+    padding:8px 12px; box-shadow:0 4px 14px rgba(0,0,0,0.12);
+    font-size:13px; color:var(--ink); line-height:1.45;
+    max-width:280px; display:none;
+  }
+  .map-tip .name { color:var(--accent); font-weight:600; margin-bottom:3px; }
+  .map-tip .row { color:var(--muted); font-size:12px; }
+  .map-tip .row strong { color:var(--ink); font-weight:600; }
+  .map-tip .row.muted { color:var(--muted); font-style:italic; }
 </style>
 </head>
 <body>
@@ -313,6 +325,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <span class="note" id="legend-note"></span>
     </div>
   </div>
+
+  <div class="map-tip" id="map-tip"></div>
 
   <div class="ts-panel" id="ts-panel">
     <h3 id="ts-title">Trend over time</h3>
@@ -736,16 +750,8 @@ function renderMap() {
         fill: d => valueByName[d.properties.name],
         stroke: "#64748b",
         strokeWidth: 0.4,
-        // Use native SVG <title> instead of Plot's tip:true. Plot's tip
-        // resolves by centroid proximity which mis-attributes hovers on
-        // large countries to smaller neighbours whose centroid is closer
-        // to the cursor (e.g. hovering France showed Luxembourg).
-        title: d => {
-          const v = valueByName[d.properties.name];
-          if (v == null) return `${d.properties.name}\n(no data / suppressed)`;
-          const r = rowByName[d.properties.name];
-          return `${d.properties.name}\n${meta.label}: ${fmt(v)}\nn=${(r?.n_respondents ?? "?").toLocaleString?.() ?? r?.n_respondents}`;
-        },
+        // No title/tip channel — we attach a custom DOM tooltip below
+        // anchored to the actual <path> element under the cursor.
       }),
     ],
   });
@@ -765,14 +771,40 @@ function renderMap() {
     if (n > maxPaths) { maxPaths = n; countryGroup = g; }
   }
   if (countryGroup) {
+    const tip = $("map-tip");
+    const positionTip = e => {
+      const pad = 14;
+      const rect = tip.getBoundingClientRect();
+      let x = e.clientX + pad;
+      let y = e.clientY + pad;
+      if (x + rect.width > window.innerWidth - 8) x = e.clientX - rect.width - pad;
+      if (y + rect.height > window.innerHeight - 8) y = e.clientY - rect.height - pad;
+      tip.style.left = Math.max(4, x) + "px";
+      tip.style.top = Math.max(4, y) + "px";
+    };
+    const hideTip = () => { tip.style.display = "none"; };
+
     countryGroup.querySelectorAll(":scope > path").forEach((p, i) => {
       const f = countriesGeo.features[i];
       if (!f || !f.properties || !f.properties.name) return;
+      const name = f.properties.name;
       p.style.cursor = "pointer";
-      p.addEventListener("click", () => {
-        const name = f.properties.name;
-        showDetail(name, rowByName[name]);
+      p.addEventListener("click", () => showDetail(name, rowByName[name]));
+      p.addEventListener("mouseenter", e => {
+        const v = valueByName[name];
+        const r = rowByName[name];
+        if (v == null) {
+          tip.innerHTML = `<div class="name">${name}</div><div class="row muted">No data / suppressed</div>`;
+        } else {
+          tip.innerHTML = `<div class="name">${name}</div>
+            <div class="row">${meta.label}: <strong>${fmt(v)}</strong></div>
+            <div class="row">n = <strong>${(r?.n_respondents ?? 0).toLocaleString()}</strong></div>`;
+        }
+        tip.style.display = "block";
+        positionTip(e);
       });
+      p.addEventListener("mousemove", positionTip);
+      p.addEventListener("mouseleave", hideTip);
     });
   }
 
