@@ -180,6 +180,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .legend .ticks span:last-child { transform:translateX(-100%); }
   .legend .note { margin-left:auto; align-self:center; }
 
+  .ts-panel { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-top:18px; display:none; }
+  .ts-panel.active { display:block; }
+  .ts-panel h3 { margin:0 0 10px; font-size:15px; color:#333; font-weight:600; }
+  .ts-panel .ts-meta { font-size:12px; color:var(--muted); margin-bottom:8px; }
+  .ts-chart svg { width:100%; height:auto; max-height:260px; display:block; }
+  .ts-chart-detail svg { width:100%; height:auto; max-height:200px; display:block; }
   .country-detail { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-top:18px; display:none; }
   .country-detail.active { display:block; }
   .country-detail h3 { margin:0 0 12px; color:var(--accent); font-size:18px; }
@@ -300,6 +306,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <span id="legend-max">+1</span>
       <span class="note" id="legend-note"></span>
     </div>
+  </div>
+
+  <div class="ts-panel" id="ts-panel">
+    <h3 id="ts-title">Trend over time</h3>
+    <div class="ts-meta" id="ts-meta"></div>
+    <div class="ts-chart" id="ts-chart"></div>
   </div>
 
   <div class="country-detail" id="country-detail">
@@ -551,6 +563,46 @@ function currentRows() {
   return sel.size > 1 ? poolByCountry(filtered) : filtered;
 }
 
+// Same selection as currentRows() but never pooled — used for time series.
+function windowRowsRaw() {
+  const sel = selectedMonths();
+  const { rows, gender, age } = pickStratum();
+  return rows.filter(r => {
+    const ym = `${r.year}-${String(r.month).padStart(2,"0")}`;
+    if (!sel.has(ym)) return false;
+    if (gender && r.gender_clean !== gender) return false;
+    if (age && r.age_band !== age) return false;
+    return true;
+  });
+}
+
+function ymKey(r) { return `${r.year}-${String(r.month).padStart(2,"0")}`; }
+function ymToDate(ym) { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1); }
+
+// Per-month weighted aggregate of the active metric across the given rows.
+function monthlySeries(rows) {
+  const isVolume = !freqSel.value && (metricSel.value === "adoption_rate" || metricSel.value === "freq_mean");
+  const weightField = isVolume ? "n_respondents" : "n_impact_denominator";
+  const byMonth = new Map();
+  for (const r of rows) {
+    const k = ymKey(r);
+    if (!byMonth.has(k)) byMonth.set(k, []);
+    byMonth.get(k).push(r);
+  }
+  const out = [];
+  for (const [ym, rs] of byMonth) {
+    let num = 0, den = 0;
+    for (const r of rs) {
+      const v = metricForRow(r);
+      const w = r[weightField] || 0;
+      if (v != null && w > 0) { num += v * w; den += w; }
+    }
+    if (den > 0) out.push({ ym, date: ymToDate(ym), value: num / den });
+  }
+  out.sort((a, b) => a.date - b.date);
+  return out;
+}
+
 function activeMetricMeta() {
   if (freqSel.value !== "") {
     return { label:`Net Impact at "${freqSel.options[freqSel.selectedIndex].textContent}" use`, domain:[-1,1], scheme:"PiYG", isShare:false, signed:true, freqMode:true };
@@ -799,13 +851,87 @@ function showDetail(name, row) {
     if (hasAny) html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)"><div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Dose-response (net impact by AI-use frequency · n/a means &lt;50 respondents at that level)</div>${items.join("")}</div>`;
   }
   $("cd-body").innerHTML = html;
+
+  // Country-specific time series (only when a multi-month window is active).
+  if (winSel.value !== "1") {
+    const meta = activeMetricMeta();
+    const countryRows = windowRowsRaw().filter(r => atlasName(r.country_clean) === name);
+    const series = countryRows.map(r => {
+      const v = metricForRow(r);
+      const ym = ymKey(r);
+      return v != null ? { ym, date: ymToDate(ym), value: v } : null;
+    }).filter(Boolean).sort((a, b) => a.date - b.date);
+
+    const tsBlock = document.createElement("div");
+    tsBlock.style.marginTop = "16px";
+    tsBlock.style.paddingTop = "12px";
+    tsBlock.style.borderTop = "1px solid var(--rule)";
+    tsBlock.innerHTML = `<div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${meta.label} over time — ${name}</div><div class="ts-chart-detail"></div>`;
+    $("cd-body").appendChild(tsBlock);
+    renderTimeseriesInto(tsBlock.querySelector(".ts-chart-detail"), series, meta, 200);
+  }
+
   el.classList.add("active");
   el.scrollIntoView({behavior: "smooth", block: "nearest"});
+}
+
+function renderTimeseriesInto(container, data, meta, height) {
+  if (!data || data.length === 0) {
+    container.innerHTML = '<div class="empty">Not enough data to plot a trend.</div>';
+    return;
+  }
+  const fmtVal = v => fmtMetric(v, meta);
+  const yAxis = { domain: meta.domain, label: null, grid: true, nice: false };
+  if (meta.isShare) yAxis.tickFormat = "%";
+  const marks = [];
+  if (meta.signed) marks.push(Plot.ruleY([0], { stroke: "#cbd5e1" }));
+  marks.push(Plot.lineY(data, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, curve: "monotone-x" }));
+  marks.push(Plot.dot(data, {
+    x: "date", y: "value",
+    fill: d => d.value,
+    stroke: "#1F3A5F", strokeWidth: 1,
+    r: 5,
+    title: d => `${d.date.toLocaleDateString("en", {month:"short", year:"2-digit"})}: ${fmtVal(d.value)}`,
+    tip: true,
+  }));
+  const interp = makeInterp(meta);
+  const colorOpts = interp
+    ? { type: "linear", interpolate: interp, domain: meta.domain, clamp: true, legend: false }
+    : { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, legend: false };
+  const plot = Plot.plot({
+    width: 880,
+    height: height || 220,
+    marginTop: 16,
+    marginRight: 20,
+    marginBottom: 30,
+    marginLeft: 56,
+    x: { type: "time", label: null, tickFormat: d => d.toLocaleDateString("en", {month:"short", year:"2-digit"}) },
+    y: yAxis,
+    color: colorOpts,
+    marks,
+  });
+  container.innerHTML = "";
+  container.appendChild(plot);
+}
+
+function renderTimeseries() {
+  const panel = $("ts-panel");
+  if (winSel.value === "1") {
+    panel.classList.remove("active");
+    return;
+  }
+  panel.classList.add("active");
+  const meta = activeMetricMeta();
+  const data = monthlySeries(windowRowsRaw());
+  $("ts-title").textContent = `${meta.label} over time`;
+  $("ts-meta").textContent = `${data.length} of ${selectedMonths().size} months · weighted across visible countries · ${filterSummary()}`;
+  renderTimeseriesInto($("ts-chart"), data, meta, 240);
 }
 
 function render() {
   renderKPIs();
   renderMap();
+  renderTimeseries();
 }
 
 [metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", () => { hideDetail(); render(); }));
