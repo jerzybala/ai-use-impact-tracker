@@ -786,11 +786,17 @@ function showDetail(name, row) {
     const dr = row.dose_response;
     const labels = {1:"Rarely",2:"Monthly",3:"Weekly",4:"Daily",5:"Constantly",6:"Always"};
     const items = [];
+    let hasAny = false;
     for (const k of [1,2,3,4,5,6]) {
       const v = dr[k];
-      if (v != null) items.push(`<span style="display:inline-block;margin-right:14px;font-size:13px;color:var(--muted)">${labels[k]}: <strong style="color:${v>0?"var(--pos)":v<0?"var(--neg)":"var(--accent)"}">${fmtSigned(v)}</strong></span>`);
+      if (v != null) {
+        hasAny = true;
+        items.push(`<span style="display:inline-block;margin-right:16px;font-size:13px;color:var(--muted)">${labels[k]}: <strong style="color:${v>0?"var(--pos)":v<0?"var(--neg)":"var(--accent)"}">${fmtSigned(v)}</strong></span>`);
+      } else {
+        items.push(`<span style="display:inline-block;margin-right:16px;font-size:13px;color:var(--muted);opacity:0.45">${labels[k]}: <em>n/a</em></span>`);
+      }
     }
-    if (items.length) html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)"><div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Dose-response (net impact by AI-use frequency)</div>${items.join("")}</div>`;
+    if (hasAny) html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)"><div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Dose-response (net impact by AI-use frequency · n/a means &lt;50 respondents at that level)</div>${items.join("")}</div>`;
   }
   $("cd-body").innerHTML = html;
   el.classList.add("active");
