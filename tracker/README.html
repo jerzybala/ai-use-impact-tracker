@@ -143,12 +143,12 @@ docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
   <ul>
     <li><strong>Top KPIs</strong>: Weighted Impact Index, respondents, AI adoption rate, impact denominator — all reflecting the active filters.</li>
     <li><strong>World choropleth</strong> colored by one of 10 metrics (definitions below).</li>
-    <li><strong>Filters</strong>: month + period (Single / Last 3 / Last 6), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
+    <li><strong>Filters</strong>: month + period (Single / Last 6 / Last 12), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
     <li><strong>Country click</strong> opens a detail card with all impact shares and the dose-response curve.</li>
   </ul>
 
   <h2 id="metric-reference">Dashboard metric reference</h2>
-  <p>All metrics are computed per (stratum × month). When the <strong>Period</strong> is set to Last 3 / Last 6, values are pooled across the window using respondent-count weights (see <a href="#sec9">§9</a>).</p>
+  <p>All metrics are computed per (stratum × month). When the <strong>Period</strong> is set to Last 6 / Last 12, values are pooled across the window using respondent-count weights (see <a href="#sec9">§9</a>).</p>
   <table>
     <thead>
       <tr><th>Metric</th><th>Definition</th><th>Denominator</th><th>Range (clipped for map)</th></tr>
@@ -337,7 +337,7 @@ docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
   <p>These are explicit Phase 1 scope boundaries. Phase 2 will add weighting and compositional adjustment.</p>
 
   <h2 id="sec9">9. Rolling-window pooling (dashboard only)</h2>
-  <p>The dashboard's <strong>Period</strong> selector (Single month / Last 3 / Last 6) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.</p>
+  <p>The dashboard's <strong>Period</strong> selector (Single month / Last 6 / Last 12) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.</p>
   <p>Pooling rules per (country × gender × age) cell across the window months:</p>
   <table>
     <thead><tr><th>Field</th><th>Aggregation</th><th>Weight</th></tr></thead>
@@ -360,7 +360,7 @@ docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
     <li>§5.2 — added <code>weighted_impact_index</code> (signed-weight per-respondent score, averaged over the impact denominator).</li>
     <li>§7 — added <code>country_gender</code>, <code>country_age_band</code>, <code>country_gender_age_band</code> cross-strata to the published Parquet output (already computed in v0.1, now part of the published contract).</li>
     <li>§9 — added rolling-window pooling rules used by the dashboard.</li>
-    <li>Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 3 / Last 6 period selector.</li>
+    <li>Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 6 / Last 12 period selector.</li>
     <li>README and metric_spec consolidated into this single file.</li>
   </ul>
   <h3>v0.1</h3>

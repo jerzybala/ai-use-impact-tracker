@@ -217,8 +217,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <label>Period</label>
       <select id="window-select" title="Pool the selected month with prior months (weighted by respondent count)">
         <option value="1">Single month</option>
-        <option value="3">Last 3 months</option>
         <option value="6">Last 6 months</option>
+        <option value="12">Last 12 months</option>
       </select>
     </div>
     <div class="group">
@@ -804,6 +804,8 @@ function renderMap() {
 // Country detail
 function hideDetail() {
   $("country-detail").classList.remove("active");
+  // Restore the global time-series panel if a multi-month window is active.
+  if (winSel.value !== "1") $("ts-panel").classList.add("active");
 }
 $("cd-close").addEventListener("click", hideDetail);
 
@@ -872,6 +874,8 @@ function showDetail(name, row) {
   }
 
   el.classList.add("active");
+  // Hide the global time-series while looking at a single country.
+  $("ts-panel").classList.remove("active");
   el.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
 

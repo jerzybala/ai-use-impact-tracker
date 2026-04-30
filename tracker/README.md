@@ -131,7 +131,7 @@ at the project root (`app.py`).
 - **Top KPIs**: Weighted Impact Index, respondents, AI adoption rate,
   impact denominator — all reflecting the active filters.
 - **World choropleth** colored by one of 10 metrics (definitions below).
-- **Filters**: month + period (Single / Last 3 / Last 6), color-by
+- **Filters**: month + period (Single / Last 6 / Last 12), color-by
   metric, gender, age band, frequency. Filter combinations select the
   appropriate precomputed stratum, so every value shown is exact.
 - **Country click** opens a detail card with all impact shares and the
@@ -142,7 +142,7 @@ at the project root (`app.py`).
 ## Dashboard metric reference
 
 All metrics are computed per (stratum × month). When the **Period** is
-set to Last 3 / Last 6, values are pooled across the window using
+set to Last 6 / Last 12, values are pooled across the window using
 respondent-count weights (see [§9](#9-rolling-window-pooling-dashboard-only)).
 
 | Metric | Definition | Denominator | Range (clipped for map) |
@@ -331,7 +331,7 @@ These are explicit Phase 1 scope boundaries. Phase 2 will add weighting and comp
 
 ## 9. Rolling-Window Pooling (dashboard only)
 
-The dashboard's **Period** selector (Single month / Last 3 / Last 6) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.
+The dashboard's **Period** selector (Single month / Last 6 / Last 12) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.
 
 Pooling rules per (country × gender × age) cell across the window months:
 
@@ -361,7 +361,7 @@ layout in §7 is the stable contract.
 - §5.2 — added `weighted_impact_index` (signed-weight per-respondent score, averaged over the impact denominator).
 - §7 — added `country_gender`, `country_age_band`, `country_gender_age_band` cross-strata to the published Parquet output (already computed in v0.1, now part of the published contract).
 - §9 — added rolling-window pooling rules used by the dashboard.
-- Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 3 / Last 6 period selector.
+- Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 6 / Last 12 period selector.
 - README and metric_spec consolidated into this single file.
 
 **v0.1**
