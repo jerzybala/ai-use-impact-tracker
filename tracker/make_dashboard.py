@@ -171,9 +171,14 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .map-meta { font-size:12px; color:var(--muted); }
   #map-container { width:100%; }
   #map-container svg { width:100%; height:auto; max-height:600px; display:block; }
-  .legend { display:flex; align-items:center; gap:10px; margin-top:8px; font-size:12px; color:var(--muted); }
-  .legend .swatch { width:220px; height:12px; border-radius:3px; border:1px solid var(--rule); }
-  .legend .note { margin-left:auto; }
+  .legend { display:flex; align-items:flex-start; gap:10px; margin-top:8px; font-size:12px; color:var(--muted); }
+  .legend .bar-wrap { display:flex; flex-direction:column; gap:2px; }
+  .legend .swatch { width:380px; height:12px; border-radius:3px; border:1px solid var(--rule); }
+  .legend .ticks { display:flex; justify-content:space-between; width:380px; padding:0 1px; font-size:10px; color:var(--muted); white-space:nowrap; }
+  .legend .ticks span { transform:translateX(-50%); }
+  .legend .ticks span:first-child { transform:none; }
+  .legend .ticks span:last-child { transform:translateX(-100%); }
+  .legend .note { margin-left:auto; align-self:center; }
 
   .country-detail { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-top:18px; display:none; }
   .country-detail.active { display:block; }
@@ -288,7 +293,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
     <div id="map-container"><div class="empty">Loading map…</div></div>
     <div class="legend">
       <span id="legend-min">−1</span>
-      <span class="swatch" id="legend-swatch"></span>
+      <div class="bar-wrap">
+        <span class="swatch" id="legend-swatch"></span>
+        <div class="ticks" id="legend-ticks"></div>
+      </div>
       <span id="legend-max">+1</span>
       <span class="note" id="legend-note"></span>
     </div>
@@ -331,7 +339,7 @@ const METRIC_META = {
   weighted_impact_index: { label:"Weighted Impact Index", domain:[-0.3, 0.3], scheme:"PiYG",   isShare:false, signed:true  },
   net_impact_index:      { label:"Net Impact Index",      domain:[-0.5, 0.5], scheme:"PiYG",   isShare:false, signed:true  },
   adoption_rate:         { label:"AI Adoption Rate",      domain:[0, 1],      scheme:"Blues",  isShare:true,  signed:false },
-  freq_mean:             { label:"Frequency Mean",        domain:[1, 5],      scheme:"Blues",  isShare:false, signed:false, freqOrdinal:true },
+  freq_mean:             { label:"Frequency Mean",        domain:[0, 6],      scheme:"Blues",  isShare:false, signed:false, freqOrdinal:true },
   impact_share_improved_quality:    { label:"Improved Quality (share)",    domain:[0, 0.6],  scheme:"Greens", isShare:true, signed:false },
   impact_share_new_opportunities:   { label:"New Opportunities (share)",   domain:[0, 0.4],  scheme:"Greens", isShare:true, signed:false },
   impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
@@ -629,10 +637,26 @@ function renderMap() {
   $("map-title").textContent = "World map — " + meta.label;
   $("map-meta").textContent = `${rows.length.toLocaleString()} country rows · cells under n=50 are suppressed`;
 
-  // Legend — labels reflect the active domain (with clamp)
+  // Legend — labels reflect the active domain (with clamp).
+  // For Frequency Mean, show all 7 ordinal labels under the swatch and
+  // hide the min/max numeric labels. For other metrics show min/max.
   const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(1);
-  $("legend-min").textContent = fmtBound(meta.domain[0]);
-  $("legend-max").textContent = fmtBound(meta.domain[1]);
+  const ticksEl = $("legend-ticks");
+  ticksEl.innerHTML = "";
+  if (meta.freqOrdinal) {
+    $("legend-min").style.visibility = "hidden";
+    $("legend-max").style.visibility = "hidden";
+    for (const lbl of FREQ_LABELS) {
+      const s = document.createElement("span");
+      s.textContent = lbl;
+      ticksEl.appendChild(s);
+    }
+  } else {
+    $("legend-min").style.visibility = "visible";
+    $("legend-max").style.visibility = "visible";
+    $("legend-min").textContent = fmtBound(meta.domain[0]);
+    $("legend-max").textContent = fmtBound(meta.domain[1]);
+  }
   if (interp) {
     const stops = Array.from({length: 11}, (_, i) => interp(i / 10));
     $("legend-swatch").style.background = `linear-gradient(to right, ${stops.join(",")})`;
