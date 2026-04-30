@@ -89,13 +89,34 @@ at the project root (`app.py`).
 
 - **Top KPIs**: Weighted Impact Index, respondents, AI adoption rate,
   impact denominator — all reflecting the active filters.
-- **World choropleth** colored by one of 10 metrics (see `metric_spec.md`
-  §5 for definitions).
+- **World choropleth** colored by one of 10 metrics (definitions below).
 - **Filters**: month + period (Single / Last 3 / Last 6), color-by
   metric, gender, age band, frequency. Filter combinations select the
   appropriate precomputed stratum, so every value shown is exact.
 - **Country click** opens a detail card with all impact shares and the
   dose-response curve.
+
+## Metrics
+
+All metrics are computed per (stratum × month). When the **Period** is set to Last 3 / Last 6, values are pooled across the window using respondent-count weights (see `metric_spec.md §9`). See `metric_spec.md §5` for the formal definitions.
+
+| Metric | Definition | Denominator | Range (clipped for map) |
+|---|---|---|---|
+| **Weighted Impact Index** | Per-respondent score = sum of signed weights for each impact flag selected; map shows the average. Weights: `+1.0` new opportunities, `+0.5` improved quality, `−0.25` job anxiety, `−0.5` adaptation pressure, `−0.75` reduced income, `−1.0` job loss. | AI users with ≥1 impact response | ≈ [−1, +1], shown [−0.3, +0.3] |
+| **Net Impact Index** | `positive_impact_share − negative_impact_share`. Positive = improved quality OR new opportunities. Negative = adaptation pressure OR job anxiety OR job loss OR reduced income. | (same) | [−1, +1], shown [−0.5, +0.5] |
+| **AI Adoption Rate** | Share whose `ai_freq` is anything other than "Never". | All respondents in stratum | [0, 1], shown [0, 100%] |
+| **Frequency Mean (0–6)** | Mean of the `ai_freq` integer scale: 0 Never, 1 Rarely, 2 Monthly, 3 Weekly, 4 Daily, 5 Constantly, 6 Always. | Respondents with non-null `ai_freq` | [0, 6], shown [1, 5] |
+| **Improved Quality (share)** | Share who selected "Improved my work quality or output". | AI users with ≥1 impact response | [0, 1], shown [0, 60%] |
+| **New Opportunities (share)** | Share who selected "Created new job or income opportunities". | (same) | [0, 1], shown [0, 40%] |
+| **Adaptation Pressure (share)** | Share who selected "Increased pressure to adapt or work faster". | (same) | [0, 1], shown [0, 60%] |
+| **Job Anxiety (share)** | Share who selected "Made me worry about the future of my job or industry". | (same) | [0, 1], shown [0, 60%] |
+| **Job Loss (share)** | Share who selected "Caused me to lose my job". | (same) | [0, 1], shown [0, 15%] |
+| **Reduced Income (share)** | Share who selected "Reduced my income or made it harder to find work". | (same) | [0, 1], shown [0, 20%] |
+
+**Notes**
+- Impact shares can sum to more than 100% — respondents may select multiple flags simultaneously.
+- Cells with fewer than 50 respondents are suppressed (`MIN_N = 50`) and not drawn on the map.
+- "Range (clipped for map)" is the visualization domain; outliers saturate at the endpoint color so the rest of the map stays readable.
 
 ## Downstream consumer (alternative)
 

@@ -22,6 +22,12 @@
   a { color:var(--accent2); }
   ul { margin:0 0 12px; padding-left:22px; }
   li { margin-bottom:6px; }
+  table { border-collapse:collapse; width:100%; margin:0 0 14px; font-size:13px; }
+  th, td { border-bottom:1px solid var(--rule); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; white-space:nowrap; }
+  td:nth-child(3), td:nth-child(4) { white-space:nowrap; color:var(--muted); }
+  .note { background:#fbfcfd; border-left:3px solid var(--accent2); padding:10px 14px; border-radius:0 6px 6px 0; font-size:13px; color:var(--muted); margin:12px 0; }
+  .note strong { color:var(--accent); }
   code { background:var(--chip); padding:1px 6px; border-radius:4px; font-family:"SF Mono", Menlo, Consolas, monospace; font-size:13px; color:var(--accent); }
   pre { background:var(--code-bg); color:var(--code-ink); padding:14px 18px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.55; }
   pre code { background:transparent; color:inherit; padding:0; }
@@ -47,6 +53,7 @@
     <a href="#lambda">Lambda</a>
     <a href="#bake">Bake the dashboard</a>
     <a href="#features">Dashboard features</a>
+    <a href="#metrics">Metrics</a>
     <a href="#downstream">Downstream</a>
   </div>
 
@@ -103,10 +110,83 @@ docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
   <h2 id="features">Dashboard features</h2>
   <ul>
     <li><strong>Top KPIs</strong>: Weighted Impact Index, respondents, AI adoption rate, impact denominator — all reflecting the active filters.</li>
-    <li><strong>World choropleth</strong> colored by one of 10 metrics (see <code>metric_spec.md</code> §5 for definitions).</li>
+    <li><strong>World choropleth</strong> colored by one of 10 metrics (definitions below).</li>
     <li><strong>Filters</strong>: month + period (Single / Last 3 / Last 6), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
     <li><strong>Country click</strong> opens a detail card with all impact shares and the dose-response curve.</li>
   </ul>
+
+  <h2 id="metrics">Metrics</h2>
+  <p>All metrics are computed per (stratum × month). When the <strong>Period</strong> is set to Last 3 / Last 6, values are pooled across the window using respondent-count weights (see <code>metric_spec.md §9</code>). See <code>metric_spec.md §5</code> for the formal definitions.</p>
+  <table>
+    <thead>
+      <tr><th>Metric</th><th>Definition</th><th>Denominator</th><th>Range (clipped for map)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Weighted Impact Index</strong></td>
+        <td>Per-respondent score = sum of signed weights for each impact flag selected; map shows the average. Weights: <code>+1.0</code> new opportunities, <code>+0.5</code> improved quality, <code>−0.25</code> job anxiety, <code>−0.5</code> adaptation pressure, <code>−0.75</code> reduced income, <code>−1.0</code> job loss.</td>
+        <td>AI users with ≥1 impact response</td>
+        <td>≈ [−1, +1], shown [−0.3, +0.3]</td>
+      </tr>
+      <tr>
+        <td><strong>Net Impact Index</strong></td>
+        <td><code>positive_impact_share − negative_impact_share</code>. Positive = improved quality OR new opportunities. Negative = adaptation pressure OR job anxiety OR job loss OR reduced income.</td>
+        <td>(same)</td>
+        <td>[−1, +1], shown [−0.5, +0.5]</td>
+      </tr>
+      <tr>
+        <td><strong>AI Adoption Rate</strong></td>
+        <td>Share whose <code>ai_freq</code> is anything other than "Never".</td>
+        <td>All respondents in stratum</td>
+        <td>[0, 1], shown [0, 100%]</td>
+      </tr>
+      <tr>
+        <td><strong>Frequency Mean (0–6)</strong></td>
+        <td>Mean of the <code>ai_freq</code> integer scale: 0 Never, 1 Rarely, 2 Monthly, 3 Weekly, 4 Daily, 5 Constantly, 6 Always.</td>
+        <td>Respondents with non-null <code>ai_freq</code></td>
+        <td>[0, 6], shown [1, 5]</td>
+      </tr>
+      <tr>
+        <td><strong>Improved Quality (share)</strong></td>
+        <td>Share who selected "Improved my work quality or output".</td>
+        <td>AI users with ≥1 impact response</td>
+        <td>[0, 1], shown [0, 60%]</td>
+      </tr>
+      <tr>
+        <td><strong>New Opportunities (share)</strong></td>
+        <td>Share who selected "Created new job or income opportunities".</td>
+        <td>(same)</td>
+        <td>[0, 1], shown [0, 40%]</td>
+      </tr>
+      <tr>
+        <td><strong>Adaptation Pressure (share)</strong></td>
+        <td>Share who selected "Increased pressure to adapt or work faster".</td>
+        <td>(same)</td>
+        <td>[0, 1], shown [0, 60%]</td>
+      </tr>
+      <tr>
+        <td><strong>Job Anxiety (share)</strong></td>
+        <td>Share who selected "Made me worry about the future of my job or industry".</td>
+        <td>(same)</td>
+        <td>[0, 1], shown [0, 60%]</td>
+      </tr>
+      <tr>
+        <td><strong>Job Loss (share)</strong></td>
+        <td>Share who selected "Caused me to lose my job".</td>
+        <td>(same)</td>
+        <td>[0, 1], shown [0, 15%]</td>
+      </tr>
+      <tr>
+        <td><strong>Reduced Income (share)</strong></td>
+        <td>Share who selected "Reduced my income or made it harder to find work".</td>
+        <td>(same)</td>
+        <td>[0, 1], shown [0, 20%]</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="note">
+    <strong>Notes.</strong> Impact shares can sum to more than 100% — respondents may select multiple flags simultaneously. Cells with fewer than 50 respondents are suppressed (<code>MIN_N = 50</code>) and not drawn on the map. "Range (clipped for map)" is the visualization domain; outliers saturate at the endpoint color so the rest of the map stays readable.
+  </div>
 
   <h2 id="downstream">Downstream consumer (alternative)</h2>
   <p>The Parquet output can also be read directly by external dashboards (Observable Framework, Evidence.dev) via DuckDB-WASM. The Parquet layout in <code>metric_spec.md §7</code> is the stable contract.</p>
