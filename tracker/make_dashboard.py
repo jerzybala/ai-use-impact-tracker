@@ -193,6 +193,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .country-detail .stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
   .country-detail .stat .v { font-size:18px; font-weight:600; color:var(--accent); }
   .country-detail .close { float:right; cursor:pointer; color:var(--muted); border:none; background:transparent; font-size:18px; }
+  .dose-block { margin-top:14px; padding-top:12px; border-top:1px solid var(--rule); }
+  .dose-block .dose-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
+  .dose-items { display:flex; flex-wrap:wrap; gap:6px 18px; line-height:1.5; }
+  .dose-items > span { font-size:13px; color:var(--muted); white-space:nowrap; }
+  .ts-detail-block { margin-top:24px; padding-top:14px; border-top:1px solid var(--rule); clear:both; }
+  .ts-detail-block .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
 
   .empty { color:var(--muted); font-style:italic; padding:14px; text-align:center; }
 </style>
@@ -845,12 +851,12 @@ function showDetail(name, row) {
       const v = dr[k];
       if (v != null) {
         hasAny = true;
-        items.push(`<span style="display:inline-block;margin-right:16px;font-size:13px;color:var(--muted)">${labels[k]}: <strong style="color:${v>0?"var(--pos)":v<0?"var(--neg)":"var(--accent)"}">${fmtSigned(v)}</strong></span>`);
+        items.push(`<span>${labels[k]}: <strong style="color:${v>0?"var(--pos)":v<0?"var(--neg)":"var(--accent)"}">${fmtSigned(v)}</strong></span>`);
       } else {
-        items.push(`<span style="display:inline-block;margin-right:16px;font-size:13px;color:var(--muted);opacity:0.45">${labels[k]}: <em>n/a</em></span>`);
+        items.push(`<span style="opacity:0.45">${labels[k]}: <em>n/a</em></span>`);
       }
     }
-    if (hasAny) html += `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)"><div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">Dose-response (net impact by AI-use frequency · n/a means &lt;50 respondents at that level)</div>${items.join("")}</div>`;
+    if (hasAny) html += `<div class="dose-block"><div class="dose-label">Dose-response (net impact by AI-use frequency · n/a means &lt;50 respondents at that level)</div><div class="dose-items">${items.join("")}</div></div>`;
   }
   $("cd-body").innerHTML = html;
 
@@ -865,10 +871,8 @@ function showDetail(name, row) {
     }).filter(Boolean).sort((a, b) => a.date - b.date);
 
     const tsBlock = document.createElement("div");
-    tsBlock.style.marginTop = "16px";
-    tsBlock.style.paddingTop = "12px";
-    tsBlock.style.borderTop = "1px solid var(--rule)";
-    tsBlock.innerHTML = `<div class="lbl" style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px">${meta.label} over time — ${name}</div><div class="ts-chart-detail"></div>`;
+    tsBlock.className = "ts-detail-block";
+    tsBlock.innerHTML = `<div class="lbl">${meta.label} over time — ${name}</div><div class="ts-chart-detail"></div>`;
     $("cd-body").appendChild(tsBlock);
     renderTimeseriesInto(tsBlock.querySelector(".ts-chart-detail"), series, meta, 200);
   }
@@ -879,13 +883,31 @@ function showDetail(name, row) {
   el.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
 
+// Fit a tight y-domain around the time-series data with a small padding,
+// so small month-over-month changes are readable instead of flattened
+// against the map's full visualization range.
+function fitTSDomain(data, meta) {
+  const vals = data.map(d => d.value).filter(v => Number.isFinite(v));
+  if (vals.length === 0) return meta.domain;
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  const range = max - min;
+  // delta = 15% of the range, with a small floor so a flat series still
+  // gets some vertical breathing room.
+  const floor = meta.isShare ? 0.005 : meta.signed ? 0.01 : 0.05;
+  const delta = Math.max(range * 0.15, floor);
+  let lo = min - delta, hi = max + delta;
+  if (meta.isShare) lo = Math.max(0, lo);
+  return [lo, hi];
+}
+
 function renderTimeseriesInto(container, data, meta, height) {
   if (!data || data.length === 0) {
     container.innerHTML = '<div class="empty">Not enough data to plot a trend.</div>';
     return;
   }
   const fmtVal = v => fmtMetric(v, meta);
-  const yAxis = { domain: meta.domain, label: null, grid: true, nice: false };
+  const yAxis = { domain: fitTSDomain(data, meta), label: null, grid: true, nice: false };
   if (meta.isShare) yAxis.tickFormat = "%";
   const marks = [];
   if (meta.signed) marks.push(Plot.ruleY([0], { stroke: "#cbd5e1" }));

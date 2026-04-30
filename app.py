@@ -104,7 +104,12 @@ UPLOAD_PAGE = r"""
 
   /* Previous dashboards list */
   .sessions { margin-top:8px; }
-  .sessions a { display:block; padding:6px 0; font-size:14px; }
+  .sessions .row { display:flex; align-items:center; justify-content:space-between; padding:6px 0; gap:12px; border-bottom:1px solid #f1f3f5; }
+  .sessions .row:last-child { border-bottom:none; }
+  .sessions .row a { font-size:14px; color:var(--accent2); text-decoration:none; }
+  .sessions .row a:hover { text-decoration:underline; }
+  .del-btn { background:transparent; border:1px solid var(--rule); color:#9ca3af; font-size:12px; padding:4px 10px; border-radius:6px; cursor:pointer; margin-top:0; }
+  .del-btn:hover { color:#b3261e; border-color:#fca5a5; background:#fdecec; }
 </style>
 </head>
 <body>
@@ -133,7 +138,10 @@ UPLOAD_PAGE = r"""
     <h2>Previous dashboards</h2>
     <div class="sessions">
       {% for s in sessions %}
-      <a href="/dashboard/{{ s.id }}">{{ s.label }}</a>
+      <div class="row" data-job="{{ s.id }}">
+        <a href="/dashboard/{{ s.id }}">{{ s.label }}</a>
+        <button type="button" class="del-btn" onclick="deleteSession('{{ s.id }}')">Delete</button>
+      </div>
       {% endfor %}
     </div>
   </div>
@@ -184,6 +192,22 @@ form.addEventListener("submit", async (e) => {
     btn.disabled = false;
   }
 });
+
+async function deleteSession(id) {
+  if (!confirm("Delete this dashboard? This cannot be undone.")) return;
+  try {
+    const res = await fetch("/delete/" + encodeURIComponent(id), { method: "POST" });
+    if (res.ok) {
+      const row = document.querySelector('.row[data-job="' + id + '"]');
+      if (row) row.remove();
+    } else {
+      const txt = await res.text();
+      alert("Delete failed: " + txt);
+    }
+  } catch (err) {
+    alert("Delete failed: " + err.message);
+  }
+}
 
 async function pollJob(jobId) {
   const res = await fetch("/job/" + jobId);
@@ -313,6 +337,26 @@ def dashboard(job_id):
 @app.route("/dashboard-v2/<job_id>")
 def dashboard_legacy(job_id):
     return redirect(url_for("dashboard", job_id=job_id))
+
+
+@app.route("/delete/<job_id>", methods=["POST"])
+def delete_session(job_id):
+    """Remove a baked dashboard session from disk + the in-memory registry."""
+    # Defensive check: refuse anything that could escape DATA_DIR
+    if not job_id or "/" in job_id or ".." in job_id or job_id.startswith("."):
+        return "invalid id", 400
+    target = DATA_DIR / job_id
+    try:
+        target = target.resolve()
+        if DATA_DIR.resolve() not in target.parents:
+            return "invalid id", 400
+    except Exception:
+        return "invalid id", 400
+    if not target.exists() or not target.is_dir():
+        return "not found", 404
+    shutil.rmtree(target)
+    JOBS.pop(job_id, None)
+    return "ok"
 
 
 @app.route("/latest")
