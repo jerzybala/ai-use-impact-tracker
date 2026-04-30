@@ -736,13 +736,16 @@ function renderMap() {
         fill: d => valueByName[d.properties.name],
         stroke: "#64748b",
         strokeWidth: 0.4,
+        // Use native SVG <title> instead of Plot's tip:true. Plot's tip
+        // resolves by centroid proximity which mis-attributes hovers on
+        // large countries to smaller neighbours whose centroid is closer
+        // to the cursor (e.g. hovering France showed Luxembourg).
         title: d => {
           const v = valueByName[d.properties.name];
           if (v == null) return `${d.properties.name}\n(no data / suppressed)`;
           const r = rowByName[d.properties.name];
           return `${d.properties.name}\n${meta.label}: ${fmt(v)}\nn=${(r?.n_respondents ?? "?").toLocaleString?.() ?? r?.n_respondents}`;
         },
-        tip: true,
       }),
     ],
   });
