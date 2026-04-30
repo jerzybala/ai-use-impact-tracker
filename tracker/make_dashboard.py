@@ -315,20 +315,90 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
 import {feature} from "https://cdn.jsdelivr.net/npm/topojson-client@3/+esm";
 import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
 
-// GMP country name → world-atlas properties.name
+// GMP country name → world-atlas properties.name (Natural Earth 110m).
+// The atlas uses abbreviated forms ("Dem. Rep. Congo", "Bosnia and Herz.")
+// and a few non-obvious renderings ("Czechia", "eSwatini", "Türkiye").
 const NAME_ALIASES = {
+  // Anglo / common Latin variants
   "United States": "United States of America",
   "USA": "United States of America",
   "U.S.A.": "United States of America",
+  "U.S.": "United States of America",
+  "US": "United States of America",
   "UK": "United Kingdom",
+  "U.K.": "United Kingdom",
+  "Great Britain": "United Kingdom",
+  "Britain": "United Kingdom",
+  "Russian Federation": "Russia",
+  "Republic of Korea": "South Korea",
+  "Korea, South": "South Korea",
+  "Korea (South)": "South Korea",
+  "Korea, Republic of": "South Korea",
+  "Democratic People's Republic of Korea": "North Korea",
+  "Korea, North": "North Korea",
+  "DPRK": "North Korea",
+  "Iran, Islamic Republic of": "Iran",
+  "Iran (Islamic Republic of)": "Iran",
+  "Syrian Arab Republic": "Syria",
+  "Lao People's Democratic Republic": "Laos",
+  "Lao PDR": "Laos",
+  "Viet Nam": "Vietnam",
+  "Burma": "Myanmar",
+  "Myanmar (Burma)": "Myanmar",
+  "Brunei Darussalam": "Brunei",
+  "Republic of Moldova": "Moldova",
+  "Moldova, Republic of": "Moldova",
+  "Bolivia (Plurinational State of)": "Bolivia",
+  "Venezuela, Bolivarian Republic of": "Venezuela",
+  "Venezuela (Bolivarian Republic of)": "Venezuela",
+  "Tanzania, United Republic of": "Tanzania",
+  "United Republic of Tanzania": "Tanzania",
+  "Palestinian Territory": "Palestine",
+  "Palestine, State of": "Palestine",
+  "Hong Kong SAR": "Hong Kong",
+  "Hong Kong, China": "Hong Kong",
+  "Macao SAR": "Macao",
+  "Taiwan, Province of China": "Taiwan",
+
+  // Atlas uses abbreviated forms
   "Czech Republic": "Czechia",
+  "Czechoslovakia": "Czechia",
+  "Macedonia": "North Macedonia",
+  "Republic of Macedonia": "North Macedonia",
+  "Macedonia, Republic of": "North Macedonia",
+  "FYR Macedonia": "North Macedonia",
+  "Swaziland": "eSwatini",
+  "Eswatini": "eSwatini",
+  "Cape Verde": "Cabo Verde",
+  "East Timor": "Timor-Leste",
+  "Timor": "Timor-Leste",
+  "Turkey": "Türkiye",
+  "Turkiye": "Türkiye",
   "Ivory Coast": "Côte d'Ivoire",
+  "Cote d'Ivoire": "Côte d'Ivoire",
+  "Congo, Democratic Republic of the": "Dem. Rep. Congo",
+  "Democratic Republic of the Congo": "Dem. Rep. Congo",
+  "DR Congo": "Dem. Rep. Congo",
+  "DRC": "Dem. Rep. Congo",
   "Congo (DRC)": "Dem. Rep. Congo",
   "Congo (Kinshasa)": "Dem. Rep. Congo",
+  "Congo, Republic of the": "Republic of the Congo",
+  "Congo (Brazzaville)": "Republic of the Congo",
+  "Congo": "Republic of the Congo",
   "Bosnia and Herzegovina": "Bosnia and Herz.",
   "Dominican Republic": "Dominican Rep.",
   "Central African Republic": "Central African Rep.",
   "South Sudan": "S. Sudan",
+  "Equatorial Guinea": "Eq. Guinea",
+  "Solomon Islands": "Solomon Is.",
+  "Falkland Islands": "Falkland Is.",
+  "Western Sahara": "W. Sahara",
+  "Saint Kitts and Nevis": "St. Kitts and Nevis",
+  "Saint Vincent and the Grenadines": "St. Vin. and Gren.",
+  "Saint Lucia": "Saint Lucia",
+  "Antigua and Barbuda": "Antigua and Barb.",
+  "Sao Tome and Principe": "São Tomé and Principe",
+  "São Tomé and Príncipe": "São Tomé and Principe",
 };
 const atlasName = n => NAME_ALIASES[n] ?? n;
 
@@ -619,12 +689,15 @@ function renderMap() {
     ],
   });
 
-  // Click handler on country paths
-  plot.querySelectorAll("path").forEach((p, i) => {
+  // Click handler on country paths.
+  // Read each path's bound feature directly from __data__ — using the
+  // querySelectorAll index is wrong because Plot prepends the sphere
+  // mark as the first <path>, which would shift every country by one.
+  plot.querySelectorAll("path").forEach(p => {
+    const f = p.__data__;
+    if (!f || typeof f !== "object" || !f.properties || !f.properties.name) return;
     p.style.cursor = "pointer";
     p.addEventListener("click", () => {
-      const f = countriesGeo.features[i];
-      if (!f) return;
       const name = f.properties.name;
       showDetail(name, rowByName[name]);
     });
