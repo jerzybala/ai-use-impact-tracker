@@ -690,18 +690,30 @@ function renderMap() {
   });
 
   // Click handler on country paths.
-  // Read each path's bound feature directly from __data__ — using the
-  // querySelectorAll index is wrong because Plot prepends the sphere
-  // mark as the first <path>, which would shift every country by one.
-  plot.querySelectorAll("path").forEach(p => {
-    const f = p.__data__;
-    if (!f || typeof f !== "object" || !f.properties || !f.properties.name) return;
-    p.style.cursor = "pointer";
-    p.addEventListener("click", () => {
-      const name = f.properties.name;
-      showDetail(name, rowByName[name]);
+  // Plot.geo creates a <g> containing one <path> per feature; Plot.sphere
+  // creates a separate <g> with a single path. We need to attach clicks
+  // only to the country paths and map each one to the correct feature.
+  // Plot 0.6 binds the integer index (not the feature object) to each
+  // path's __data__, so we identify the country group as the <g> with
+  // the most direct <path> children, then iterate its paths in order
+  // — which matches countriesGeo.features 1-to-1.
+  const allGroups = [...plot.querySelectorAll("g")];
+  let countryGroup = null, maxPaths = 0;
+  for (const g of allGroups) {
+    const n = g.querySelectorAll(":scope > path").length;
+    if (n > maxPaths) { maxPaths = n; countryGroup = g; }
+  }
+  if (countryGroup) {
+    countryGroup.querySelectorAll(":scope > path").forEach((p, i) => {
+      const f = countriesGeo.features[i];
+      if (!f || !f.properties || !f.properties.name) return;
+      p.style.cursor = "pointer";
+      p.addEventListener("click", () => {
+        const name = f.properties.name;
+        showDetail(name, rowByName[name]);
+      });
     });
-  });
+  }
 
   const c = $("map-container");
   c.innerHTML = "";
