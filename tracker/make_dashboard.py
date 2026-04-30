@@ -331,7 +331,7 @@ const METRIC_META = {
   weighted_impact_index: { label:"Weighted Impact Index", domain:[-0.3, 0.3], scheme:"PiYG",   isShare:false, signed:true  },
   net_impact_index:      { label:"Net Impact Index",      domain:[-0.5, 0.5], scheme:"PiYG",   isShare:false, signed:true  },
   adoption_rate:         { label:"AI Adoption Rate",      domain:[0, 1],      scheme:"Blues",  isShare:true,  signed:false },
-  freq_mean:             { label:"Frequency Mean",        domain:[1, 5],      scheme:"Blues",  isShare:false, signed:false },
+  freq_mean:             { label:"Frequency Mean",        domain:[1, 5],      scheme:"Blues",  isShare:false, signed:false, freqOrdinal:true },
   impact_share_improved_quality:    { label:"Improved Quality (share)",    domain:[0, 0.6],  scheme:"Greens", isShare:true, signed:false },
   impact_share_new_opportunities:   { label:"New Opportunities (share)",   domain:[0, 0.4],  scheme:"Greens", isShare:true, signed:false },
   impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
@@ -504,10 +504,20 @@ function filterSummary() {
   return parts.join(" · ");
 }
 
+const FREQ_LABELS = ["Never", "Rarely", "Monthly", "Weekly", "Daily", "Constantly", "Always"];
+const freqOrdinal = v => v == null ? null : FREQ_LABELS[Math.max(0, Math.min(6, Math.round(v)))];
+
 const fmtSigned = v => v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(3);
 const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
 const fmtNum = v => v == null ? "—" : v.toLocaleString();
-const fmtMetric = (v, meta) => v == null ? "—" : meta.isShare ? fmtPct(v) : meta.signed ? fmtSigned(v) : v.toFixed(2);
+const fmtFreqMean = v => v == null ? "—" : `${v.toFixed(2)} (${freqOrdinal(v)})`;
+const fmtMetric = (v, meta) => {
+  if (v == null) return "—";
+  if (meta.isShare) return fmtPct(v);
+  if (meta.signed) return fmtSigned(v);
+  if (meta.freqOrdinal) return fmtFreqMean(v);
+  return v.toFixed(2);
+};
 
 // KPIs
 function renderKPIs() {
@@ -649,7 +659,7 @@ function showDetail(name, row) {
     ["Respondents", fmtNum(row.n_respondents)],
     ["Impact denom", fmtNum(row.n_impact_denominator)],
     ["Adoption rate", fmtPct(row.adoption_rate)],
-    ["Frequency mean", row.freq_mean == null ? "—" : row.freq_mean.toFixed(2)],
+    ["Frequency mean", fmtFreqMean(row.freq_mean)],
     ["Weighted impact", fmtSigned(row.weighted_impact_index)],
     ["Net impact", fmtSigned(row.net_impact_index)],
     ["Improved quality", fmtPct(row.impact_share_improved_quality)],
