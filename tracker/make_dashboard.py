@@ -437,11 +437,11 @@ monthSel.value = months[months.length - 1];
 
 prevBtn.addEventListener("click", () => {
   const i = months.indexOf(monthSel.value);
-  if (i > 0) { monthSel.value = months[i-1]; render(); }
+  if (i > 0) { monthSel.value = months[i-1]; hideDetail(); render(); }
 });
 nextBtn.addEventListener("click", () => {
   const i = months.indexOf(monthSel.value);
-  if (i < months.length - 1) { monthSel.value = months[i+1]; render(); }
+  if (i < months.length - 1) { monthSel.value = months[i+1]; hideDetail(); render(); }
 });
 resetBtn.addEventListener("click", () => {
   metricSel.value = "weighted_impact_index";
@@ -808,7 +808,7 @@ function render() {
   renderMap();
 }
 
-[metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", render));
+[metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", () => { hideDetail(); render(); }));
 render();
 </script>
 </body>
