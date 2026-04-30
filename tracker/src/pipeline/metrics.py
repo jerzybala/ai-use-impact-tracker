@@ -1,7 +1,7 @@
 """
 Metric-layer aggregation. Pure functions on DataFrames. No I/O.
 
-Implements §5 of metric_spec.md: core indicators, impact indicators,
+Implements §5 of tracker/README.md: core indicators, impact indicators,
 dose-response, and Wilson-score 95% CIs for share metrics.
 """
 from __future__ import annotations

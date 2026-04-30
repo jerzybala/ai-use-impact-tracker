@@ -13,7 +13,7 @@ const ageBand = FileAttachment("data/age_band.parquet").parquet();
 ```
 
 ```js
-// Ordinal frequency labels per metric_spec §4.1
+// Ordinal frequency labels per tracker/README.md §4.1
 const FREQ_LABELS = ["Never", "Rarely", "Monthly", "Weekly", "Daily", "Constantly", "Always"];
 
 // Build long-format dose-response rows from a stratum parquet

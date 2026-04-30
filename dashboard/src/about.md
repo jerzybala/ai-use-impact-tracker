@@ -56,4 +56,4 @@ Any stratum-month cell with fewer than **50 respondents** is suppressed. Confide
 
 ## Data layout
 
-The dashboard reads consolidated Parquet files produced by the ETL pipeline. Each file is one stratum level, covering all months. The authoritative spec is [`metric_spec.md`](https://github.com/) in the tracker repository.
+The dashboard reads consolidated Parquet files produced by the ETL pipeline. Each file is one stratum level, covering all months. The authoritative spec is [`tracker/README.md`](https://github.com/).

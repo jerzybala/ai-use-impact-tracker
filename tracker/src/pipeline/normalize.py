@@ -1,7 +1,7 @@
 """
 Normalisation layer. Pure functions on DataFrames. No I/O.
 
-Implements the rules defined in metric_spec.md §4.
+Implements the rules defined in tracker/README.md §4.
 """
 from __future__ import annotations
 
