@@ -644,6 +644,8 @@ function ymKey(r) { return `${r.year}-${String(r.month).padStart(2,"0")}`; }
 function ymToDate(ym) { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1); }
 
 // Per-month weighted aggregate of the active metric across the given rows.
+// Also records `n` (sum of n_respondents across countries in that month) so
+// markPartial() can detect the in-flight current month from its low sample.
 function monthlySeries(rows) {
   const isVolume = !freqSel.value && (metricSel.value === "adoption_rate" || metricSel.value === "freq_mean");
   const weightField = isVolume ? "n_respondents" : "n_impact_denominator";
@@ -655,16 +657,33 @@ function monthlySeries(rows) {
   }
   const out = [];
   for (const [ym, rs] of byMonth) {
-    let num = 0, den = 0;
+    let num = 0, den = 0, totalN = 0;
     for (const r of rs) {
       const v = metricForRow(r);
       const w = r[weightField] || 0;
       if (v != null && w > 0) { num += v * w; den += w; }
+      totalN += r.n_respondents || 0;
     }
-    if (den > 0) out.push({ ym, date: ymToDate(ym), value: num / den });
+    if (den > 0) out.push({ ym, date: ymToDate(ym), value: num / den, n: totalN });
   }
   out.sort((a, b) => a.date - b.date);
   return out;
+}
+
+// Tag the last point as `partial` when its respondent count is well below the
+// median of prior months in the series — the signal that the current month is
+// still in flight. Requires at least 3 prior months to compute a stable median.
+function markPartial(data) {
+  if (!data || data.length < 4) return data;
+  const prior = data.slice(0, -1).map(d => d.n).filter(v => v != null && v > 0);
+  if (prior.length < 3) return data;
+  const sorted = [...prior].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  const last = data[data.length - 1];
+  if (last.n != null && median > 0 && last.n < 0.6 * median) {
+    last.partial = true;
+  }
+  return data;
 }
 
 function activeMetricMeta() {
@@ -946,8 +965,9 @@ function showDetail(name, row) {
     const series = countryRows.map(r => {
       const v = metricForRow(r);
       const ym = ymKey(r);
-      return v != null ? { ym, date: ymToDate(ym), value: v } : null;
+      return v != null ? { ym, date: ymToDate(ym), value: v, n: r.n_respondents || 0 } : null;
     }).filter(Boolean).sort((a, b) => a.date - b.date);
+    markPartial(series);
 
     const tsBlock = document.createElement("div");
     tsBlock.className = "ts-detail-block";
@@ -990,15 +1010,38 @@ function renderTimeseriesInto(container, data, meta, height) {
   if (meta.isShare) yAxis.tickFormat = "%";
   const marks = [];
   if (meta.signed) marks.push(Plot.ruleY([0], { stroke: "#cbd5e1" }));
-  marks.push(Plot.lineY(data, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, curve: "monotone-x" }));
-  marks.push(Plot.dot(data, {
-    x: "date", y: "value",
-    fill: d => d.value,
-    stroke: "#1F3A5F", strokeWidth: 1,
-    r: 5,
-    title: d => `${d.date.toLocaleDateString("en", {month:"short", year:"2-digit"})}: ${fmtVal(d.value)}`,
-    tip: true,
-  }));
+
+  const lastIsPartial = data.length > 0 && data[data.length - 1].partial;
+  const titleFn = d => `${d.date.toLocaleDateString("en", {month:"short", year:"2-digit"})}: ${fmtVal(d.value)}${d.partial ? " (partial month)" : ""}`;
+
+  if (lastIsPartial && data.length >= 2) {
+    // Solid line through completed months; dashed segment to the partial tail.
+    const solidData = data.slice(0, -1);
+    const tailData = data.slice(-2);
+    marks.push(Plot.lineY(solidData, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, curve: "monotone-x" }));
+    marks.push(Plot.lineY(tailData, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, strokeDasharray: "4,3", curve: "linear" }));
+    // Filled dots for completed months; outlined dot for the partial point.
+    marks.push(Plot.dot(solidData, {
+      x: "date", y: "value",
+      fill: d => d.value,
+      stroke: "#1F3A5F", strokeWidth: 1, r: 5,
+      title: titleFn, tip: true,
+    }));
+    marks.push(Plot.dot(data.slice(-1), {
+      x: "date", y: "value",
+      fill: "#ffffff",
+      stroke: "#1F3A5F", strokeWidth: 1.5, r: 5,
+      title: titleFn, tip: true,
+    }));
+  } else {
+    marks.push(Plot.lineY(data, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, curve: "monotone-x" }));
+    marks.push(Plot.dot(data, {
+      x: "date", y: "value",
+      fill: d => d.value,
+      stroke: "#1F3A5F", strokeWidth: 1, r: 5,
+      title: titleFn, tip: true,
+    }));
+  }
   const interp = makeInterp(meta);
   const colorOpts = interp
     ? { type: "linear", interpolate: interp, domain: meta.domain, clamp: true, legend: false }
@@ -1028,8 +1071,10 @@ function renderTimeseries() {
   panel.classList.add("active");
   const meta = activeMetricMeta();
   const data = monthlySeries(windowRowsRaw());
+  markPartial(data);
+  const partialNote = (data.length && data[data.length - 1].partial) ? " · last month partial (in-progress data)" : "";
   $("ts-title").textContent = `${meta.label} over time`;
-  $("ts-meta").textContent = `${data.length} of ${selectedMonths().size} months · weighted across visible countries · ${filterSummary()}`;
+  $("ts-meta").textContent = `${data.length} of ${selectedMonths().size} months · weighted across visible countries · ${filterSummary()}${partialNote}`;
   renderTimeseriesInto($("ts-chart"), data, meta, 240);
 }
 
