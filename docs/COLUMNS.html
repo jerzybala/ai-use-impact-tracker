@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GMP AI Use Data — Column Reference</title>
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --pos:#1a7f4e; --neg:#b3261e; --rule:#e5e7eb; --chip:#E8EEF4;
+    --code-bg:#f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height:1.55; font-size:15px; }
+  .shell { max-width:920px; margin:0 auto; padding:40px 36px 80px; }
+
+  h1 { color:var(--accent); font-size:30px; margin:0 0 8px; letter-spacing:-0.01em; }
+  h2 { color:var(--accent); font-size:22px; margin:36px 0 12px; padding-top:18px;
+    border-top:1px solid var(--rule); letter-spacing:-0.01em; }
+  h3 { color:var(--accent2); font-size:17px; margin:24px 0 8px; }
+  .lede { color:var(--muted); margin:0 0 24px; font-size:15px; }
+
+  p { margin:8px 0 12px; }
+  ul, ol { margin:8px 0 16px; padding-left:24px; }
+  li { margin:5px 0; }
+  strong { color:var(--ink); }
+  a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; }
+  a:hover { border-bottom-color:var(--accent2); }
+
+  code { background:var(--code-bg); padding:1px 6px; border-radius:4px; font-size:90%;
+    font-family: "SF Mono", Menlo, Consolas, monospace; color:#334155; }
+
+  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:14px; }
+  th, td { padding:8px 12px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.4px; }
+  tr:last-child td { border-bottom:none; }
+
+  .toc { background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:14px 22px; margin:18px 0 28px; }
+  .toc h3 { margin:0 0 8px; font-size:13px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.6px; }
+  .toc ul { margin:0; padding-left:18px; }
+  .toc li { margin:4px 0; }
+
+  .pos { color:var(--pos); font-weight:600; }
+  .neg { color:var(--neg); font-weight:600; }
+  .check { color:var(--pos); font-weight:600; }
+  .dash { color:var(--muted); }
+
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<h1>GMP AI Use Data — Column Reference</h1>
+<p class="lede">A reference for every column in the GMP survey export that relates to AI use, plus the demographic stratifiers the tracker uses. This is the <strong>source-side</strong> companion to <a href="TRACKER.html">TRACKER.html</a>, which documents the metric layer built on top.<br/>
+Source: GMP AI Use Data column inventory (see <a href="GMP%20AI%20Use%20Data%20Columns.pdf">GMP AI Use Data Columns.pdf</a>).</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#one">1. Quick map</a></li>
+  <li><a href="#two">2. Survey question columns</a></li>
+  <li><a href="#three">3. Demographic stratifier columns</a></li>
+  <li><a href="#four">4. How columns map to dashboard metrics</a></li>
+  <li><a href="#five">5. Reserved (currently unused) columns</a></li>
+</ul>
+</div>
+
+<h2 id="one">1. Quick map</h2>
+<table>
+  <thead><tr><th>Column</th><th>Role</th><th>Used by tracker?</th></tr></thead>
+  <tbody>
+    <tr><td><code>ai_freq</code></td><td>AI-use frequency (exposure)</td><td><span class="check">✓</span> Adoption Rate · Frequency Mean · dose-response</td></tr>
+    <tr><td><code>ai_impact_work</code></td><td>Self-reported AI impact on work (outcome)</td><td><span class="check">✓</span> All 12 impact metrics</td></tr>
+    <tr><td><code>ai_use_general</code></td><td>What AI is used for in general life</td><td><span class="dash">— Reserved for future use</span></td></tr>
+    <tr><td><code>ai_use_social</code></td><td>Use of AI in social contexts</td><td><span class="dash">— Reserved for future use</span></td></tr>
+    <tr><td><code>ai_impact_personal</code></td><td>Self-reported AI impact on personal life</td><td><span class="dash">— Reserved for future use</span></td></tr>
+    <tr><td><code>country</code></td><td>Country (stratifier)</td><td><span class="check">✓</span> All country-stratum metrics</td></tr>
+    <tr><td><code>gender</code>, <code>biological_sex</code></td><td>Gender (stratifier; biological_sex is fallback)</td><td><span class="check">✓</span> Gender-stratum metrics</td></tr>
+    <tr><td><code>age</code></td><td>Age (stratifier; coerced to band)</td><td><span class="check">✓</span> Age-band stratum metrics</td></tr>
+    <tr><td><code>year</code>, <code>month</code></td><td>Time grain</td><td><span class="check">✓</span> Monthly partitioning</td></tr>
+  </tbody>
+</table>
+
+<h2 id="two">2. Survey question columns</h2>
+
+<h3>2.1 <code>ai_freq</code> — AI-use frequency</h3>
+<p>The headline <strong>exposure</strong> variable. Captures how often a respondent uses an AI assistant. Seven canonical ordinal levels are recognised, with the following raw-value mappings:</p>
+<table>
+  <thead><tr><th>Integer</th><th>Canonical label</th><th>Raw values mapped</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Never</td><td>"I have never used an AI assistant"</td></tr>
+    <tr><td>1</td><td>Rarely</td><td>"Rarely"</td></tr>
+    <tr><td>2</td><td>Monthly</td><td>"A few times a month"</td></tr>
+    <tr><td>3</td><td>Weekly</td><td>"Several days a week"</td></tr>
+    <tr><td>4</td><td>Daily</td><td>"Several times a day"</td></tr>
+    <tr><td>5</td><td>Constantly</td><td>"Constantly", "Constamment", "Constantly (when awake)"</td></tr>
+    <tr><td>6</td><td>Always</td><td>"All of the time"</td></tr>
+    <tr><td>—</td><td>(null)</td><td>"N/A" or any other value</td></tr>
+  </tbody>
+</table>
+<p>Notes:</p>
+<ul>
+  <li><code>Constamment</code> is the French rendering and <code>Constantly (when awake)</code> is a spec variant; both map to level 5.</li>
+  <li>Respondents at level 0 ("Never") are <strong>excluded</strong> from impact metrics but counted toward the adoption-rate denominator.</li>
+</ul>
+
+<h3>2.2 <code>ai_impact_work</code> — Self-reported AI impact on work</h3>
+<p>The headline <strong>outcome</strong> variable. Multi-select; raw value is pipe-delimited (<code>|</code>). Each atomic option is split out into a binary flag:</p>
+<table>
+  <thead><tr><th>Flag</th><th>Atomic option (raw)</th><th>Sentiment</th></tr></thead>
+  <tbody>
+    <tr><td><code>impact_none</code></td><td>"No impact" · "Nenhum impacto"</td><td>Neutral</td></tr>
+    <tr><td><code>impact_improved_quality</code></td><td>"Improved my work quality or output"</td><td><span class="pos">Positive</span></td></tr>
+    <tr><td><code>impact_new_opportunities</code></td><td>"Created new job or income opportunities"</td><td><span class="pos">Positive</span></td></tr>
+    <tr><td><code>impact_adaptation_pressure</code></td><td>"Increased pressure to adapt or work faster"</td><td><span class="neg">Negative</span></td></tr>
+    <tr><td><code>impact_job_anxiety</code></td><td>"Made me worry about the future of my job or industry"</td><td><span class="neg">Negative</span></td></tr>
+    <tr><td><code>impact_job_loss</code></td><td>"Caused me to lose my job"</td><td><span class="neg">Negative</span></td></tr>
+    <tr><td><code>impact_reduced_income</code></td><td>"Reduced my income or made it harder to find work"</td><td><span class="neg">Negative</span></td></tr>
+    <tr><td><code>impact_other</code></td><td>"Another impact not listed here"</td><td>Neutral</td></tr>
+    <tr><td><code>impact_not_sure</code></td><td>"Not sure" · "No estoy seguro/a" · "Not No estoy seguro/a"</td><td>Neutral</td></tr>
+    <tr><td><code>impact_na</code></td><td>All-N/A or blank</td><td>—</td></tr>
+  </tbody>
+</table>
+<p>Notes:</p>
+<ul>
+  <li>Respondents can pick multiple options, so multiple flags may be true for the same person.</li>
+  <li>Unknown atomic options fall through to <code>impact_other</code>.</li>
+  <li>Rows where all answers are "N/A" or blank get <code>impact_na = true</code> and are <strong>excluded</strong> from impact-share denominators (but still counted toward adoption-rate denominators).</li>
+  <li>Translation variants (e.g. Portuguese "Nenhum impacto", Spanish "No estoy seguro/a") are observed in the data and mapped to their English canonical flag.</li>
+</ul>
+
+<h2 id="three">3. Demographic stratifier columns</h2>
+
+<h3>3.1 <code>country</code></h3>
+<p>Free-text country name. The tracker canonicalises against an ISO-3166 dictionary (English long-form), with explicit aliases for non-Latin-script variants observed in the data — for example, Devanagari "भारत (इंडिया)" and its MacRoman-mangled rendering both map to "India".</p>
+<p>The dashboard separately maps the canonical English name to the Natural Earth atlas form for choropleth rendering — see <a href="DASHBOARD.html#country-names">DASHBOARD.html §8</a>.</p>
+
+<h3>3.2 <code>gender</code> / <code>biological_sex</code></h3>
+<p>Two related columns. The tracker uses <code>gender</code> when present and non-null; falls back to <code>biological_sex</code> otherwise. Valid values:</p>
+<ul>
+  <li>Female</li>
+  <li>Male</li>
+  <li>Non-binary</li>
+  <li>Other/Intersex</li>
+  <li>Prefer not to say</li>
+</ul>
+<p>Any other value is coerced to <code>null</code>.</p>
+
+<h3>3.3 <code>age</code></h3>
+<p>Mixed type. May arrive as an integer age (handled specially for 18–20) or as a pre-existing age-band string. The tracker normalises to one of nine canonical bands:</p>
+<p><code>18-20</code> · <code>21-24</code> · <code>25-34</code> · <code>35-44</code> · <code>45-54</code> · <code>55-64</code> · <code>65-74</code> · <code>75-84</code> · <code>85+</code></p>
+<p>Integer ages 18–20 are mapped to <code>"18-20"</code>. Any other value that doesn't match a canonical band becomes <code>null</code>.</p>
+
+<h3>3.4 <code>year</code>, <code>month</code></h3>
+<p>Survey-submission year and integer month (1–12). Used as the time grain for every metric table in the Parquet output.</p>
+
+<h2 id="four">4. How columns map to dashboard metrics</h2>
+<table>
+  <thead><tr><th>Dashboard metric</th><th>Source column(s)</th><th>How</th></tr></thead>
+  <tbody>
+    <tr><td>Weighted Impact Index</td><td><code>ai_impact_work</code> (× <code>ai_freq</code> for the user filter)</td><td>Sum of signed weights across all impact flags, averaged over AI users with any impact response</td></tr>
+    <tr><td>Net Impact Index</td><td><code>ai_impact_work</code></td><td>Share with any positive flag − share with any negative flag</td></tr>
+    <tr><td>AI Adoption Rate</td><td><code>ai_freq</code></td><td>Share with <code>ai_freq != Never</code></td></tr>
+    <tr><td>Frequency Mean</td><td><code>ai_freq</code></td><td>Mean of the 0–6 integer scale</td></tr>
+    <tr><td>Improved Quality (share)</td><td><code>ai_impact_work</code></td><td><code>impact_improved_quality</code> flag share within impact denominator</td></tr>
+    <tr><td>New Opportunities (share)</td><td><code>ai_impact_work</code></td><td><code>impact_new_opportunities</code> flag share</td></tr>
+    <tr><td>Adaptation Pressure (share)</td><td><code>ai_impact_work</code></td><td><code>impact_adaptation_pressure</code> flag share</td></tr>
+    <tr><td>Job Anxiety (share)</td><td><code>ai_impact_work</code></td><td><code>impact_job_anxiety</code> flag share</td></tr>
+    <tr><td>Job Loss (share)</td><td><code>ai_impact_work</code></td><td><code>impact_job_loss</code> flag share</td></tr>
+    <tr><td>Reduced Income (share)</td><td><code>ai_impact_work</code></td><td><code>impact_reduced_income</code> flag share</td></tr>
+    <tr><td>Dose-response</td><td><code>ai_freq</code> × <code>ai_impact_work</code></td><td>Net impact computed separately within each <code>ai_freq</code> level</td></tr>
+    <tr><td>Respondents</td><td>(all rows)</td><td>Count after stratification</td></tr>
+    <tr><td>Impact Denominator</td><td><code>ai_freq</code>, <code>ai_impact_work</code></td><td>Count of AI users with any non-blank impact response</td></tr>
+  </tbody>
+</table>
+<p>Stratification: every metric is computed once for each combination of <code>country</code>, <code>gender</code>, <code>age_band</code>, and (<code>year</code>, <code>month</code>). See <a href="TRACKER.html">TRACKER.html §2</a> for the eight stratum levels.</p>
+
+<h2 id="five">5. Reserved (currently unused) columns</h2>
+<p>These columns are present in the GMP AI Use export but are <strong>not consumed by the tracker today</strong>. They are placeholders for future iterations.</p>
+<table>
+  <thead><tr><th>Column</th><th>Likely content</th><th>Possible future use</th></tr></thead>
+  <tbody>
+    <tr><td><code>ai_use_general</code></td><td>What AI is used for outside of work (multi-select)</td><td>Tag-cloud of common use cases; cross-tab against impact</td></tr>
+    <tr><td><code>ai_use_social</code></td><td>How AI is used in social/relational contexts (multi-select)</td><td>Standalone impact track parallel to the work one</td></tr>
+    <tr><td><code>ai_impact_personal</code></td><td>Self-reported AI impact on personal life (multi-select)</td><td>Mental health, relationships, sleep, leisure — would mirror the work-impact pipeline</td></tr>
+  </tbody>
+</table>
+<p>Adding any of these is mechanical: implement an analogous <code>parse_*</code> step in the normalisation layer, define share/index metrics in the metric layer, and add a new stratum dimension if needed. The existing layout in <a href="TRACKER.html">TRACKER.html</a> accommodates additive columns under a minor version bump.</p>
+
+<h2 id="related">Related docs</h2>
+<ul>
+  <li><a href="TRACKER.html">TRACKER.html</a> — full metric specification and ETL contract</li>
+  <li><a href="DASHBOARD.html">DASHBOARD.html</a> — dashboard architecture and algorithms</li>
+  <li><a href="DASHBOARD_SIMPLE.html">DASHBOARD_SIMPLE.html</a> — plain-English dashboard guide</li>
+</ul>
+
+<footer>AI Use Impact Tracker — Column Reference &nbsp;·&nbsp; Global Mind Project, Sapien Labs</footer>
+
+</div>
+</body>
+</html>

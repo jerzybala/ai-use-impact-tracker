@@ -25,6 +25,7 @@ from flask import (
     render_template_string,
     request,
     send_file,
+    send_from_directory,
     url_for,
     jsonify,
 )
@@ -64,6 +65,8 @@ def health():
 
 DATA_DIR = Path(os.environ.get("DATA_DIR", HERE / "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+DOCS_DIR = HERE / "docs"
 
 # In-memory job registry: job_id → {status, progress, error, html_path, ...}
 JOBS: dict[str, dict] = {}
@@ -357,6 +360,12 @@ def delete_session(job_id):
     shutil.rmtree(target)
     JOBS.pop(job_id, None)
     return "ok"
+
+
+@app.route("/docs/<path:filename>")
+def docs(filename):
+    """Serve documentation files (markdown, html, pdf) from /docs."""
+    return send_from_directory(str(DOCS_DIR), filename)
 
 
 @app.route("/latest")

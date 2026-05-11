@@ -213,12 +213,35 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .map-tip .row { color:var(--muted); font-size:12px; }
   .map-tip .row strong { color:var(--ink); font-weight:600; }
   .map-tip .row.muted { color:var(--muted); font-style:italic; }
+
+  .header-top { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .help-menu { position:relative; flex-shrink:0; }
+  .help-btn { background:var(--chip); color:var(--accent); border:1px solid var(--rule);
+    border-radius:6px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; }
+  .help-btn:hover { background:#d8e2ec; }
+  .help-dropdown { position:absolute; right:0; top:calc(100% + 6px); background:#fff;
+    border:1px solid var(--rule); border-radius:8px; box-shadow:0 4px 14px rgba(0,0,0,0.10);
+    min-width:200px; padding:6px; display:none; z-index:100; }
+  .help-dropdown.open { display:block; }
+  .help-dropdown a { display:block; padding:8px 12px; font-size:13px; color:var(--ink);
+    text-decoration:none; border-radius:5px; }
+  .help-dropdown a:hover { background:var(--chip); color:var(--accent); }
 </style>
 </head>
 <body>
 <div class="shell">
   <header>
-    <h1>AI Use Impact Tracker</h1>
+    <div class="header-top">
+      <h1>AI Use Impact Tracker</h1>
+      <div class="help-menu">
+        <button type="button" class="help-btn" id="help-btn" aria-haspopup="true" aria-expanded="false">Help ▾</button>
+        <div class="help-dropdown" id="help-dropdown" role="menu">
+          <a href="/docs/DASHBOARD_SIMPLE.html" target="_blank" rel="noopener">User guide</a>
+          <a href="/docs/DASHBOARD_SIMPLE.html#eight" target="_blank" rel="noopener">Metric reference</a>
+          <a href="/docs/COLUMNS.html" target="_blank" rel="noopener">Data columns</a>
+        </div>
+      </div>
+    </div>
     <p>Self-reported impact of AI use on work, by country and demographic. Built on the Global Mind Project by Sapien Labs. Cells with fewer than 50 respondents are suppressed.</p>
   </header>
 
@@ -996,6 +1019,29 @@ function render() {
 }
 
 [metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", () => { hideDetail(); render(); }));
+
+// Help menu
+const helpBtn = $("help-btn");
+const helpDrop = $("help-dropdown");
+helpBtn.addEventListener("click", e => {
+  e.stopPropagation();
+  const isOpen = helpDrop.classList.toggle("open");
+  helpBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+});
+document.addEventListener("click", e => {
+  if (!helpDrop.contains(e.target) && e.target !== helpBtn) {
+    helpDrop.classList.remove("open");
+    helpBtn.setAttribute("aria-expanded", "false");
+  }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && helpDrop.classList.contains("open")) {
+    helpDrop.classList.remove("open");
+    helpBtn.setAttribute("aria-expanded", "false");
+    helpBtn.focus();
+  }
+});
+
 render();
 </script>
 </body>

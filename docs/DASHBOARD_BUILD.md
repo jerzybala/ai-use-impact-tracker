@@ -67,4 +67,4 @@ GMP data → tracker/ ETL → Parquet on S3 → dashboard/ build → CDN
 
 The ETL (`tracker/`) and dashboard (`dashboard/`) are intentionally
 decoupled. They communicate only via the Parquet layout defined in
-`tracker/README.md §7`.
+`docs/TRACKER.md §7`.

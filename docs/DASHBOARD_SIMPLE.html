@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Use Impact Tracker — Dashboard Guide</title>
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --pos:#1a7f4e; --neg:#b3261e; --rule:#e5e7eb; --chip:#E8EEF4;
+    --code-bg:#f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height:1.6; font-size:16px; }
+  .shell { max-width:1020px; margin:0 auto; padding:40px 36px 80px; }
+
+  h1 { color:var(--accent); font-size:30px; margin:0 0 8px; letter-spacing:-0.01em; }
+  h2 { color:var(--accent); font-size:22px; margin:38px 0 12px; padding-top:20px;
+    border-top:1px solid var(--rule); letter-spacing:-0.01em; }
+  h3 { color:var(--accent2); font-size:17px; margin:24px 0 8px; }
+  .lede { color:var(--muted); margin:0 0 28px; font-size:15px; }
+
+  p { margin:10px 0 14px; }
+  ul, ol { margin:10px 0 18px; padding-left:24px; }
+  li { margin:6px 0; }
+  strong { color:var(--ink); }
+  a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; }
+  a:hover { border-bottom-color:var(--accent2); }
+
+  code { background:var(--code-bg); padding:1px 6px; border-radius:4px; font-size:90%;
+    font-family: "SF Mono", Menlo, Consolas, monospace; color:#334155; }
+
+  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:14px; }
+  th, td { padding:9px 12px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.4px; }
+  tr:last-child td { border-bottom:none; }
+
+  table.metrics td { font-size:13.5px; line-height:1.5; }
+  table.metrics .role { display:block; color:var(--muted); font-size:11px;
+    text-transform:uppercase; letter-spacing:0.5px; font-weight:500; margin-top:2px; }
+
+  .toc { background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:14px 22px; margin:18px 0 28px; }
+  .toc h3 { margin:0 0 8px; font-size:13px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.6px; }
+  .toc ul { margin:0; padding-left:18px; }
+  .toc li { margin:4px 0; }
+
+  .callout { background:#fff; border-left:3px solid var(--accent2);
+    padding:10px 16px; margin:14px 0; border-radius:0 6px 6px 0; font-size:15px; }
+
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<h1>AI Use Impact Tracker — Dashboard Guide</h1>
+<p class="lede">A plain-English walkthrough of what the dashboard shows and how it works.<br/>For the full technical specification, see <a href="DASHBOARD.html">DASHBOARD.html</a>.</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#one">1. What this dashboard shows</a></li>
+  <li><a href="#two">2. How it works</a></li>
+  <li><a href="#three">3. What data is behind it</a></li>
+  <li><a href="#four">4. The page in detail</a></li>
+  <li><a href="#five">5. How filters work together</a></li>
+  <li><a href="#six">6. How the numbers are calculated</a></li>
+  <li><a href="#seven">7. What the colors and numbers mean</a></li>
+  <li><a href="#eight">8. Metric reference</a></li>
+</ul>
+</div>
+
+<h2 id="one">1. What this dashboard shows</h2>
+<p>The dashboard visualises how people around the world report AI is affecting their work — based on responses to the Global Mind Project survey by Sapien Labs.</p>
+
+<p>In one view, you see:</p>
+<ul>
+  <li>Four <strong>headline numbers</strong> at the top</li>
+  <li>A <strong>world map</strong> colored by the metric you choose</li>
+  <li>A <strong>trend chart</strong> (when looking at more than one month)</li>
+  <li>A <strong>detailed card</strong> for any country you click</li>
+</ul>
+
+<p>You can filter the view by month, period, gender, age band, and how often respondents use AI.</p>
+
+<h2 id="two">2. How it works</h2>
+<p>The dashboard is a single web page. Once it loads, everything runs in your browser — no server is doing any calculation. All the numbers needed are built into the page itself when it is "baked" from the survey data.</p>
+<ul>
+  <li>The numbers come from a precomputed dataset.</li>
+  <li>The map shapes come from a public world map dataset (Natural Earth).</li>
+  <li>The dashboard re-draws the three views every time you change a filter.</li>
+</ul>
+<p>You need an internet connection on first load to fetch the chart library and the world map shapes. Once loaded, you can change filters freely without any more network traffic.</p>
+
+<h2 id="three">3. What data is behind it</h2>
+<p>The dashboard works with <strong>monthly summaries</strong>. For each combination of country, gender, age band, and month, it has one row of pre-calculated numbers.</p>
+
+<p>A few things to know about the data:</p>
+<ul>
+  <li><strong>Suppression for small samples.</strong> If fewer than 50 people are in a particular slice (for example, women aged 18–20 in a specific country for one month), that slice is <strong>dropped</strong> — it does not appear on the map and is not in the totals. This protects against numbers that would be too noisy to be meaningful.</li>
+  <li><strong>Monthly grain.</strong> Every row is for one month. When you select "Last 6 months", the dashboard combines six monthly rows into a single value (see <a href="#six">§6</a> for how).</li>
+  <li><strong>No raw survey responses.</strong> The dashboard never works with individual respondents — only with the precomputed monthly summaries.</li>
+</ul>
+
+<h2 id="four">4. The page in detail</h2>
+
+<h3>Filter bar (top)</h3>
+<p>Five dropdowns plus a reset button:</p>
+<ul>
+  <li><strong>Month</strong> — pick a specific month, or use the arrows to step forward or backward one month at a time.</li>
+  <li><strong>Period</strong> — Single month, Last 6 months, or Last 12 months. The multi-month options combine recent months into a rolling summary.</li>
+  <li><strong>Color map by</strong> — picks which measure to use to color the world map. Ten options, including AI Adoption Rate, Improved Quality, Job Anxiety, etc.</li>
+  <li><strong>Gender</strong> — All, or one specific group.</li>
+  <li><strong>Age band</strong> — All, or one specific age range.</li>
+  <li><strong>Frequency</strong> — All, or only respondents who use AI at a chosen intensity (e.g. Daily, Constantly). When set, the map switches to show <strong>net impact</strong> specifically at that frequency.</li>
+</ul>
+
+<h3>Headline numbers (KPI cards)</h3>
+<p>Four cards at the top:</p>
+<ul>
+  <li><strong>Weighted Impact Index</strong> — a single number summarising how positive (green) or negative (red) the overall AI impact is. It combines all reported effects with weights that give more importance to severe ones (for example, job loss counts more than mild adaptation pressure).</li>
+  <li><strong>Respondents</strong> — total number of people in the current view.</li>
+  <li><strong>AI Adoption Rate</strong> — share of respondents who say they use AI at all.</li>
+  <li><strong>Impact Denominator</strong> — number of AI users who reported at least one impact effect. This is the base used for the impact percentages.</li>
+</ul>
+
+<h3>World map (center)</h3>
+<p>Every country is filled with a color showing its value for the chosen metric. The shading is consistent: stronger color = stronger value. Countries shown in light gray have either no data or too few respondents under the current filters.</p>
+<ul>
+  <li><strong>Hover</strong> any country to see a tooltip with its value and respondent count.</li>
+  <li><strong>Click</strong> a country to open its detail card.</li>
+</ul>
+
+<h3>Trend chart (below map, when shown)</h3>
+<p>Appears when the <strong>Period</strong> is set to Last 6 or Last 12 months. Shows the chosen metric over time as a single line for all currently visible countries combined.</p>
+
+<h3>Country detail card (after clicking a country)</h3>
+<p>Shows every metric for that country under the current filters, plus a <strong>dose-response</strong> strip — how net impact changes across different AI-use frequencies (Rarely, Monthly, Weekly, Daily, Constantly, Always). When you are looking at a multi-month period, it also shows the country's own trend line.</p>
+<p>Close the card with the × in the top right.</p>
+
+<h2 id="five">5. How filters work together</h2>
+<p>All filters apply at the same time. The view shows only the data that matches every filter.</p>
+
+<p>The <strong>Frequency</strong> filter is the one exception. Instead of hiding data, it <strong>changes what the map measures</strong>. When a frequency is selected, the map shows the net positive-vs-negative impact specifically among people who use AI at that frequency.</p>
+
+<div class="callout">
+Behind the scenes, the dashboard always picks the most specific pre-summarised slice of the data that matches your filter combination. If you filter by Women + age 25–34, the dashboard goes straight to the precomputed table for that exact combination — it does not average across other groups. This means every number you see is exact, not approximated.
+</div>
+
+<h2 id="six">6. How the numbers are calculated</h2>
+
+<h3>Combining countries (KPIs and trend chart)</h3>
+<p>When the dashboard needs a single number across many countries (for the KPI cards or the trend line), it does not take a simple average. It uses a <strong>weighted average</strong> — each country contributes in proportion to its number of respondents. A country with 10,000 respondents counts ten times more than one with 1,000.</p>
+<ul>
+  <li>For <strong>impact metrics</strong>, the weight is the number of AI users who reported impacts (the "impact denominator").</li>
+  <li>For <strong>overall metrics</strong> like adoption rate, the weight is the total respondent count.</li>
+</ul>
+
+<h3>Combining months (Last 6 / Last 12 periods)</h3>
+<p>When you select a multi-month period, the dashboard combines the monthly numbers for each country into one rolling value. This is also a weighted average — months with more respondents count more.</p>
+<p>This is an <strong>approximation</strong>. The most rigorous approach would be to recalculate everything from the raw survey responses pooled across months, but that is not practical inside the dashboard. The weighted average of monthly summaries gives the right value on average, but loses some information about month-to-month variability.</p>
+
+<h3>Frequency-based view</h3>
+<p>When you set the Frequency filter, the map switches to a measure called <strong>net impact</strong> — the share of people reporting positive effects minus the share reporting negative effects — calculated only among respondents at that frequency level. So you can ask: "Among Daily AI users in each country, what is the balance of positive vs negative experiences?"</p>
+
+<h3>Adaptive trend lines</h3>
+<p>The trend chart automatically zooms its vertical axis to fit the data, with a small amount of padding. This makes small month-to-month changes easier to see than if the chart always used the same scale as the map.</p>
+
+<h2 id="seven">7. What the colors and numbers mean</h2>
+
+<h3>Color schemes</h3>
+<p>The dashboard uses different color schemes for different types of metric:</p>
+<table>
+  <thead><tr><th>Type of metric</th><th>Colors</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Signed indices (Weighted Impact, Net Impact)</td>
+      <td>Pink → light → green</td>
+      <td>Pink = more negative · green = more positive · light yellow middle = roughly balanced</td>
+    </tr>
+    <tr>
+      <td>Volume measures (Adoption Rate, Frequency Mean)</td>
+      <td>Light → dark blue</td>
+      <td>Darker = more AI use</td>
+    </tr>
+    <tr>
+      <td>Positive-effect shares (Improved Quality, New Opportunities)</td>
+      <td>Light → dark green</td>
+      <td>Darker = more people reporting this positive effect</td>
+    </tr>
+    <tr>
+      <td>Negative-effect shares (Adaptation Pressure, Job Anxiety, Job Loss, Reduced Income)</td>
+      <td>Light → dark red</td>
+      <td>Darker = more people reporting this negative effect</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Color ranges</h3>
+<p>Each metric has a sensible range chosen for readability. For example, the Weighted Impact Index map runs from −0.30 to +0.30 (not the full mathematical −1 to +1), because realistic country values mostly sit in the inner range. Countries with values outside the visible range still get colored, but stay at the endpoint color rather than stretching the whole scale.</p>
+
+<h3>Number formats</h3>
+<ul>
+  <li><strong>Percentages</strong> — shown to one decimal place (e.g. <code>12.3%</code>)</li>
+  <li><strong>Signed indices</strong> — shown to three decimals with a sign (e.g. <code>+0.142</code>, <code>−0.073</code>)</li>
+  <li><strong>Frequency mean</strong> — shown as a decimal with the closest named level (e.g. <code>3.42 (Weekly)</code>)</li>
+  <li><strong>Counts</strong> — formatted with thousands separators (e.g. <code>12,456</code>)</li>
+  <li><strong>Missing values</strong> — shown as an em-dash <code>—</code></li>
+</ul>
+
+<h2 id="eight">8. Metric reference</h2>
+<p>The dashboard surfaces twelve metrics across the KPI cards, the map, and the country detail card. Each row below explains what one measures, how the dashboard arrives at the number, and why it is worth paying attention to.</p>
+
+<table class="metrics">
+  <thead>
+    <tr>
+      <th style="width:18%">Metric</th>
+      <th style="width:24%">What it measures</th>
+      <th style="width:30%">How it is computed</th>
+      <th style="width:28%">Why it matters</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Weighted Impact Index</strong><br/><span class="role">headline KPI + map</span></td>
+      <td>A single signed score of AI's overall effect on work, with severe outcomes weighted more heavily than mild ones.</td>
+      <td>For each AI user with any impact response, sum signed weights: job loss <code>−1.0</code>, reduced income <code>−0.75</code>, adaptation pressure <code>−0.5</code>, job anxiety <code>−0.25</code>, improved quality <code>+0.5</code>, new opportunities <code>+1.0</code>. Then average across those users.</td>
+      <td>The headline number — does AI help or hurt overall, with severity baked in (a job loss outweighs mild stress).</td>
+    </tr>
+    <tr>
+      <td><strong>Net Impact Index</strong><br/><span class="role">map</span></td>
+      <td>The simple balance of positive vs negative experiences, unweighted.</td>
+      <td>(Share reporting any positive effect) minus (share reporting any negative effect). Range −1 to +1.</td>
+      <td>A simpler alternative to the Weighted Impact Index. Tells you how many people had good vs bad experiences, without judging severity.</td>
+    </tr>
+    <tr>
+      <td><strong>AI Adoption Rate</strong><br/><span class="role">KPI + map</span></td>
+      <td>Share of respondents who use AI at all.</td>
+      <td>Number whose AI-use frequency is anything other than "Never", divided by total respondents.</td>
+      <td>Measures penetration — how widely AI use has spread in a population.</td>
+    </tr>
+    <tr>
+      <td><strong>Frequency Mean (0–6)</strong><br/><span class="role">map</span></td>
+      <td>Average AI-use intensity on a 0–6 scale.</td>
+      <td>Map each respondent's frequency to a number (Never 0 · Rarely 1 · Monthly 2 · Weekly 3 · Daily 4 · Constantly 5 · Always 6), then average across respondents who answered.</td>
+      <td>Distinguishes "many people use AI rarely" from "fewer people use it constantly" — depth of use, not just breadth.</td>
+    </tr>
+    <tr>
+      <td><strong>Respondents</strong><br/><span class="role">KPI</span></td>
+      <td>Number of people in the current filtered view.</td>
+      <td>A straight count after applying the active month, gender, age, and frequency filters.</td>
+      <td>Tells you how much data is behind the numbers shown. Trust is low when this is small.</td>
+    </tr>
+    <tr>
+      <td><strong>Impact Denominator</strong><br/><span class="role">KPI</span></td>
+      <td>Number of AI users who reported at least one specific impact (positive, negative, or neutral).</td>
+      <td>Count of respondents who use AI <strong>and</strong> selected any non-blank answer to the impact question.</td>
+      <td>The base for every impact percentage below. If this is much smaller than Respondents, most people in the slice don't use AI or didn't answer the impact question.</td>
+    </tr>
+    <tr>
+      <td><strong>Improved Quality</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who say AI improved the quality or output of their work.</td>
+      <td>Number who selected "Improved my work quality or output" divided by the Impact Denominator.</td>
+      <td>The most common positive outcome — a sign AI is acting as a productivity aid.</td>
+    </tr>
+    <tr>
+      <td><strong>New Opportunities</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who say AI created new job or income opportunities for them.</td>
+      <td>Number who selected "Created new job or income opportunities" divided by the Impact Denominator.</td>
+      <td>The strongest positive signal — AI helping people expand earnings or enter new work, not just polish existing tasks.</td>
+    </tr>
+    <tr>
+      <td><strong>Adaptation Pressure</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who feel pressure to adapt or work faster because of AI.</td>
+      <td>Number who selected "Increased pressure to adapt or work faster" divided by the Impact Denominator.</td>
+      <td>A mild negative — captures stress and pace-of-change concerns even when jobs themselves aren't threatened.</td>
+    </tr>
+    <tr>
+      <td><strong>Job Anxiety</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who worry about the future of their job or industry.</td>
+      <td>Number who selected "Made me worry about the future of my job or industry" divided by the Impact Denominator.</td>
+      <td>A forward-looking negative — anxiety about future replacement or industry disruption, regardless of current impact.</td>
+    </tr>
+    <tr>
+      <td><strong>Job Loss</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who say AI caused them to lose their job.</td>
+      <td>Number who selected "Caused me to lose my job" divided by the Impact Denominator.</td>
+      <td>The most serious negative outcome. Even small percentages are significant because of severity.</td>
+    </tr>
+    <tr>
+      <td><strong>Reduced Income</strong><br/><span class="role">share, map</span></td>
+      <td>Share of AI users who say AI reduced their income or made it harder to find work.</td>
+      <td>Number who selected "Reduced my income or made it harder to find work" divided by the Impact Denominator.</td>
+      <td>A serious financial negative — captures harm short of outright job loss, including freelancers losing clients or hours.</td>
+    </tr>
+    <tr>
+      <td><strong>Dose-response</strong><br/><span class="role">country detail card</span></td>
+      <td>Net impact broken out by AI-use frequency level.</td>
+      <td>For each frequency level separately (Rarely → Always), compute the Net Impact Index using only respondents at that level.</td>
+      <td>Reveals whether intensive AI users have systematically different experiences from light users — does more AI make work better or worse?</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+<strong>Notes on reading the shares</strong>
+<ul style="margin:6px 0 0;">
+  <li>The impact shares can <strong>sum to more than 100%</strong>. Respondents could pick several impact options at once — a single person could report both Improved Quality and Job Anxiety.</li>
+  <li>All impact shares use the <strong>same denominator</strong> (the Impact Denominator), so they are directly comparable to each other.</li>
+  <li>The Adoption Rate uses the <strong>total respondent count</strong> as its denominator instead, since people who don't use AI still count toward the population.</li>
+</ul>
+</div>
+
+<footer>AI Use Impact Tracker — Dashboard Guide &nbsp;·&nbsp; Global Mind Project, Sapien Labs</footer>
+
+</div>
+</body>
+</html>

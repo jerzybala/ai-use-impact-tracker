@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Use Impact Tracker — Dashboard Specification</title>
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --pos:#1a7f4e; --neg:#b3261e; --rule:#e5e7eb; --chip:#E8EEF4;
+    --code-bg:#f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height:1.55; font-size:15px; }
+  .shell { max-width:860px; margin:0 auto; padding:36px 36px 80px; }
+
+  h1 { color:var(--accent); font-size:30px; margin:0 0 6px; letter-spacing:-0.01em; }
+  h2 { color:var(--accent); font-size:22px; margin:36px 0 10px; padding-top:18px; border-top:1px solid var(--rule); letter-spacing:-0.01em; }
+  h3 { color:var(--accent2); font-size:17px; margin:22px 0 6px; }
+  .lede { color:var(--muted); margin:0 0 8px; font-size:15px; }
+  .meta { color:var(--muted); margin:0 0 22px; font-size:13px; }
+
+  p { margin:8px 0 12px; }
+  ul, ol { margin:8px 0 16px; padding-left:22px; }
+  li { margin:4px 0; }
+  strong { color:var(--ink); }
+  a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; }
+  a:hover { border-bottom-color:var(--accent2); }
+
+  code { background:var(--code-bg); padding:1px 6px; border-radius:4px; font-size:90%;
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace; color:#334155; }
+  pre { background:var(--code-bg); padding:14px 16px; border-radius:8px; overflow-x:auto;
+    font-family: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    font-size:13px; line-height:1.45; color:#334155; border:1px solid var(--rule); }
+  pre code { background:transparent; padding:0; font-size:inherit; }
+
+  table { width:100%; border-collapse:collapse; margin:12px 0 18px; font-size:14px; }
+  th, td { padding:8px 12px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.4px; }
+  tr:last-child td { border-bottom:none; }
+
+  .toc { background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:14px 22px; margin:18px 0 28px; }
+  .toc h3 { margin:0 0 8px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; }
+  .toc ul { columns:2; column-gap:28px; margin:0; padding-left:18px; }
+  .toc li { margin:3px 0; break-inside:avoid; }
+  @media (max-width:680px) { .toc ul { columns:1; } }
+
+  blockquote { margin:14px 0; padding:10px 16px; background:#fff;
+    border-left:3px solid var(--accent2); border-radius:0 6px 6px 0;
+    color:var(--ink); font-size:14px; }
+
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<h1>AI Use Impact Tracker — Dashboard Specification</h1>
+<p class="lede"><strong>Version:</strong> 0.2 &nbsp;·&nbsp; <strong>Scope:</strong> the single-page world-map dashboard (<code>preview.html</code>)</p>
+<p class="meta">This document describes the dashboard as a product: what it shows, how filters compose, and the algorithms that run at view time. It is intentionally independent of the implementation files. For the metric layer definitions and the ETL contract, see <a href="TRACKER.html">TRACKER.html</a>.</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#overview">1. Overview</a></li>
+  <li><a href="#architecture">2. Architecture</a></li>
+  <li><a href="#data-layer">3. Data layer</a></li>
+  <li><a href="#ui">4. UI components</a></li>
+  <li><a href="#filter-model">5. Filter model</a></li>
+  <li><a href="#algorithms">6. Algorithms</a></li>
+  <li><a href="#encoding">7. Visual encoding</a></li>
+  <li><a href="#country-names">8. Country-name reconciliation</a></li>
+  <li><a href="#suppression">9. Suppression and missingness</a></li>
+  <li><a href="#deps">10. External dependencies</a></li>
+  <li><a href="#limits">11. Known limitations</a></li>
+</ul>
+</div>
+
+<h2 id="overview">1. Overview</h2>
+<p>The dashboard is a single self-contained HTML file that visualises self-reported impact of AI use on work, by country and demographic, from the Global Mind Project (GMP) survey. It is produced by a one-shot bake step over the Parquet metric layer; once baked, it runs entirely in the browser with no server-side computation.</p>
+
+<p>Each interaction recomputes three coordinated views from the same precomputed data and the current filter state:</p>
+<ol>
+  <li>A row of four <strong>KPI cards</strong> (Weighted Impact Index, respondents, adoption rate, impact denominator).</li>
+  <li>A <strong>world choropleth</strong> colored by the active metric.</li>
+  <li>A <strong>time-series</strong> chart (only when the period selector is set to a multi-month window) and a per-country detail card on click.</li>
+</ol>
+
+<p>The dashboard never aggregates respondent-level data. All values displayed are derived from the precomputed stratified aggregates in the embedded data layer. The only client-side aggregation is the rolling-window pooling for multi-month periods (§6.2) and weighted means across countries for the KPIs and the global time series.</p>
+
+<h2 id="architecture">2. Architecture</h2>
+<pre><code>                     ┌────────────────────────────────────┐
+                     │           preview.html             │
+                     │  ┌──────────────────────────────┐  │
+                     │  │ Inline JSON (~5 stratum sets)│  │
+                     │  └──────────────────────────────┘  │
+                     │  ┌──────────────────────────────┐  │
+                     │  │ ES module (d3, topojson,     │  │
+                     │  │ Observable Plot via CDN)     │  │
+                     │  └──────────────────────────────┘  │
+                     └────────────────────────────────────┘
+                                       ↑
+                                       │  (one-time bake)
+                                       │
+                  ┌───────────────────────────────────────┐
+                  │ tracker/output/v1/metrics/*.parquet   │
+                  └───────────────────────────────────────┘</code></pre>
+
+<p><strong>Self-contained.</strong> The HTML is a single file. All data is embedded as inline JSON inside a <code>&lt;script&gt;</code> tag — there is no XHR for survey data. The only runtime network traffic is:</p>
+<ul>
+  <li>Three ES-module imports from jsDelivr: <code>d3@7</code>, <code>topojson-client@3</code>, <code>@observablehq/plot@0.6</code>.</li>
+  <li>One JSON fetch for the world atlas: <code>world-atlas@2/countries-110m.json</code> (Natural Earth 110m).</li>
+</ul>
+
+<p><strong>Pure client-side.</strong> All filtering, pooling, weighted means, color interpolation, and chart layout happens in the browser. The Flask app that hosts the file serves it as a static asset; the dashboard does not call back into the application.</p>
+
+<p><strong>Reactive.</strong> A single <code>render()</code> function is called on every filter change. It rebuilds the KPIs, the map, and the time-series from scratch — there is no incremental update path. With ~5 strata × a few thousand cells each, the all-from-scratch redraw is cheap enough that this stays under one frame.</p>
+
+<h2 id="data-layer">3. Data layer</h2>
+<p>The dashboard embeds five precomputed stratum tables, each a flat array of records at monthly grain. Every record represents one (stratum × year × month) cell.</p>
+
+<table>
+  <thead><tr><th>Stratum</th><th>Key columns</th><th>Used when</th></tr></thead>
+  <tbody>
+    <tr><td><code>global</code></td><td>—</td><td>Building the master list of available months</td></tr>
+    <tr><td><code>country</code></td><td><code>country_clean</code></td><td>No gender or age filter active</td></tr>
+    <tr><td><code>country_gender</code></td><td><code>country_clean</code>, <code>gender_clean</code></td><td>Gender filter only</td></tr>
+    <tr><td><code>country_age_band</code></td><td><code>country_clean</code>, <code>age_band</code></td><td>Age filter only</td></tr>
+    <tr><td><code>country_gender_age_band</code></td><td><code>country_clean</code>, <code>gender_clean</code>, <code>age_band</code></td><td>Both gender and age filters active</td></tr>
+  </tbody>
+</table>
+
+<p>Each record carries the same fixed set of measurement columns (counts, mean metrics, share metrics, and a nested <code>dose_response</code> object keyed by AI-use frequency level 1–6). The dashboard never reads cells flagged as suppressed — those are excluded at bake time.</p>
+
+<p>The five-table design is the core performance contract: any combination of demographic filters selects exactly one precomputed stratum, so the dashboard never has to roll up over respondent groups at view time. Time-windowing is the only on-the-fly aggregation, and it is performed per (country × gender × age) cell — never across them.</p>
+
+<h2 id="ui">4. UI components</h2>
+
+<h3>4.1 Filter bar</h3>
+<p>Five linked controls plus a reset button:</p>
+<ul>
+  <li><strong>Month</strong> — single dropdown plus prev/next buttons. Lists every (year, month) present in the <code>global</code> stratum.</li>
+  <li><strong>Period</strong> — Single month / Last 6 months / Last 12 months. Determines how many trailing months are pooled (§6.2).</li>
+  <li><strong>Color map by</strong> — selects which precomputed metric drives the choropleth. Ten options (see §7.1).</li>
+  <li><strong>Gender</strong> — All, or one of the five canonical labels.</li>
+  <li><strong>Age band</strong> — All, or one of nine bands from 18-20 to 85+.</li>
+  <li><strong>Frequency</strong> — All, or one of six AI-use intensity levels (Rarely … Always). When set, the map's color metric is <strong>overridden</strong> to show the net impact index at that frequency level (§6.5).</li>
+</ul>
+
+<h3>4.2 KPI cards</h3>
+<p>Four headline statistics. Each is recomputed from the rows visible under the current filter:</p>
+<table>
+  <thead><tr><th>KPI</th><th>Computation</th></tr></thead>
+  <tbody>
+    <tr><td>Weighted Impact Index</td><td>Weighted mean across visible (country) rows, weighted by <code>n_impact_denominator</code></td></tr>
+    <tr><td>Respondents</td><td>Sum of <code>n_respondents</code> across visible rows</td></tr>
+    <tr><td>AI Adoption Rate</td><td>Weighted mean of <code>adoption_rate</code>, weighted by <code>n_respondents</code></td></tr>
+    <tr><td>Impact Denominator</td><td>Sum of <code>n_impact_denominator</code> across visible rows</td></tr>
+  </tbody>
+</table>
+<p>The Weighted Impact Index card has a colored value: positive values render green, negative values red, zero or unknown stays neutral.</p>
+
+<h3>4.3 World map</h3>
+<p>Equal-Earth projection. One filled polygon per country drawn from the Natural Earth 110m atlas. Countries without a matching row in the current view (no data, or suppressed) are rendered in neutral gray (<code>#cbd5e1</code>).</p>
+
+<p>A custom DOM tooltip follows the cursor when hovering a country:</p>
+<ul>
+  <li>Country name (atlas form)</li>
+  <li>Metric label and formatted value, <strong>or</strong> "No data / suppressed"</li>
+  <li>Respondent count</li>
+</ul>
+<p>Clicking a country opens the country detail card (§4.5). The map also draws a sphere outline so the projection is visible even when most countries are empty.</p>
+
+<h3>4.4 Time-series panel</h3>
+<p>Hidden when <strong>Period = Single month</strong>. Otherwise shows the active metric's trend across every month in the window, aggregated across all visible countries by a weighted mean (weight = <code>n_impact_denominator</code> for impact metrics, <code>n_respondents</code> for adoption/frequency).</p>
+<p>The y-axis is fit tightly to the data (§6.7) rather than using the map's full visual domain — small month-over-month changes remain readable.</p>
+
+<h3>4.5 Country detail card</h3>
+<p>Opened by clicking a country on the map. Shows:</p>
+<ul>
+  <li>A grid of every metric for that country under the current filters.</li>
+  <li>The dose-response strip: net impact at each AI-use frequency level 1–6, with <code>n/a</code> shown for levels below the 50-respondent suppression threshold.</li>
+  <li>(Multi-month windows only) A small per-country time series of the active metric.</li>
+</ul>
+<p>When the detail card is open, the global time-series panel is hidden to avoid visual collision. Closing the detail card restores the global series if the period is multi-month.</p>
+
+<h2 id="filter-model">5. Filter model</h2>
+<p>Filters compose as a single conjunction: the visible rows are those that satisfy <strong>all</strong> of {month in window, gender match, age match}. The frequency filter is special — it never changes which rows are visible, only how the map is colored (see §6.5).</p>
+
+<p>The mapping from filter combination to source stratum is fixed:</p>
+<pre><code>(gender = any,  age = any) → country
+(gender = X,    age = any) → country_gender
+(gender = any,  age = Y)   → country_age_band
+(gender = X,    age = Y)   → country_gender_age_band</code></pre>
+
+<p>The dashboard always picks the <strong>most specific</strong> precomputed stratum that covers the active filters, then narrows by exact-match on the stratifier columns. This guarantees every cell displayed is an exact precomputed value — the dashboard never averages across demographic groups.</p>
+
+<h2 id="algorithms">6. Algorithms</h2>
+
+<h3>6.1 Stratum selection</h3>
+<p>Inputs: the current gender and age-band filter values.</p>
+<p>Output: a reference to one of the four country-level stratum arrays, plus the active gender/age values for downstream exact-match filtering.</p>
+<p>The selection is a deterministic 2×2 lookup. The selected array is then filtered to the rows whose <code>gender_clean</code> and <code>age_band</code> match the active values exactly.</p>
+
+<h3>6.2 Rolling-window pooling</h3>
+<p>Applied only when <strong>Period &gt; 1</strong>. The window is the most recent <code>w</code> months ending at the selected month, where <code>w ∈ {6, 12}</code>.</p>
+<p>For each (country, gender, age) cell appearing in any month of the window, the dashboard emits one pooled row. Aggregation rules per field:</p>
+<table>
+  <thead><tr><th>Field</th><th>Aggregation</th><th>Weight</th></tr></thead>
+  <tbody>
+    <tr><td><code>n_respondents</code>, <code>n_impact_denominator</code></td><td>sum</td><td>—</td></tr>
+    <tr><td><code>adoption_rate</code>, <code>freq_mean</code></td><td>weighted mean</td><td><code>n_respondents</code></td></tr>
+    <tr><td><code>weighted_impact_index</code>, <code>net_impact_index</code>, every <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code></td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
+    <tr><td><code>dose_response[k]</code> for k = 1…6</td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
+  </tbody>
+</table>
+<p>Rows where the relevant weight is zero or the value is null are skipped in the numerator and denominator of the weighted mean — they contribute nothing to the pooled value.</p>
+
+<blockquote><strong>This is approximate.</strong> The exact pooled value would require re-running the metric layer on respondent-level data pooled across months. The dashboard's weighted mean of monthly aggregates is correct in expectation but ignores within-month variance. Months below the 50-respondent suppression threshold were dropped at bake time, so a country may appear in the rolling window even if some of its constituent months were individually suppressed.</blockquote>
+
+<h3>6.3 KPI weighted means</h3>
+<p>For the four KPI cards, the dashboard computes a single weighted mean across all visible (country) rows after stratum selection and (if applicable) rolling pooling. The weight depends on the metric:</p>
+<ul>
+  <li><code>adoption_rate</code> → weighted by <code>n_respondents</code></li>
+  <li>everything else → weighted by <code>n_impact_denominator</code></li>
+</ul>
+<p>Sums (Respondents, Impact Denominator) are straight sums across the same row set.</p>
+
+<h3>6.4 Choropleth coloring</h3>
+<p>For each visible country row, the dashboard computes <code>value = metric(row)</code> (see §6.5 for the frequency override). Country names are mapped to atlas names (§8), then values are joined to atlas features by name.</p>
+
+<p>The color scale is a linear interpolator with:</p>
+<ul>
+  <li>A fixed <strong>domain per metric</strong> (see §7.1) — values outside the domain are clamped to the endpoint color so a single outlier cannot wash out the rest of the map.</li>
+  <li>A custom <strong>intensified interpolator</strong> — the dashboard skips the near-white tail of the underlying d3 color scheme so even small data values render as a recognisable color, distinct from the gray "no data" fill.
+    <ul>
+      <li>For <em>diverging</em> schemes (PiYG): the interpolator maps <code>[0, 1]</code> into <code>[0.04, 0.96]</code> of the underlying scheme, pulling both ends toward saturated while keeping the midpoint light but not pure white.</li>
+      <li>For <em>sequential</em> schemes (Blues, Greens, Reds): the interpolator maps <code>[0, 1]</code> into <code>[0.22, 0.96]</code>, starting at 22% so low values are visibly colored.</li>
+    </ul>
+  </li>
+</ul>
+<p>Countries with no matching row, or whose value is null, are rendered in neutral gray (<code>#cbd5e1</code>).</p>
+
+<h3>6.5 Frequency override (dose-response substitution)</h3>
+<p>When the Frequency filter is set to a level <code>f ∈ {1, …, 6}</code>, the metric used for the map and time-series is <strong>substituted</strong> with <code>dose_response[f]</code> — the precomputed net impact index restricted to respondents who reported AI use at that frequency level.</p>
+<p>This override:</p>
+<ul>
+  <li>Replaces the active metric for all map coloring, KPIs, the global time series, and the country detail's per-country time series.</li>
+  <li>Forces the color scale to the diverging PiYG scheme over domain <code>[-1, 1]</code>.</li>
+  <li>Does not affect respondent counts or the impact denominator KPIs (those remain the broad-population denominators).</li>
+  <li>Sets <code>dose_response[f]</code> to <code>null</code> for cells where fewer than 50 respondents selected that frequency level, so under-sampled country-level cells drop out of the map.</li>
+</ul>
+
+<h3>6.6 Time-series aggregation (global)</h3>
+<p>For the global time-series panel, the dashboard groups visible rows by year-month and computes a weighted mean of the active metric within each month — the same weighting rules as §6.3. The resulting series has one point per month present in the window for which at least one country contributed a non-null weighted value.</p>
+<p>Volume metrics (<code>adoption_rate</code>, <code>freq_mean</code>) weight by <code>n_respondents</code>; all other metrics weight by <code>n_impact_denominator</code>. When the frequency override is active, all weights revert to <code>n_impact_denominator</code>.</p>
+
+<h3>6.7 Adaptive y-domain (time series)</h3>
+<p>The map's per-metric domain is the right choice for cross-country comparison but too wide for trend lines: a 1-percentage-point shift gets flattened against a 60% domain. The time-series uses an adaptive domain instead:</p>
+<ol>
+  <li>Compute the min and max of the visible series values.</li>
+  <li>Pad both ends by <code>max(0.15 × (max − min), floor)</code>, where <code>floor</code> is a small per-metric-type constant (0.5% for shares, 1% for signed indices, 5% for ordinals) so a flat series still has vertical breathing room.</li>
+  <li>For share metrics, clamp the lower bound to zero.</li>
+</ol>
+<p>This applies independently to each chart instance (global panel and per-country panel).</p>
+
+<h2 id="encoding">7. Visual encoding</h2>
+
+<h3>7.1 Metric domains and schemes</h3>
+<p>The dashboard's color domain for the map is <strong>not</strong> the metric's mathematical range — it is the visible range chosen to reflect realistic between-country variation. Outliers saturate at the endpoint color.</p>
+<table>
+  <thead><tr><th>Metric</th><th>Map domain</th><th>Scheme</th><th>Format</th></tr></thead>
+  <tbody>
+    <tr><td>Weighted Impact Index</td><td>[−0.30, +0.30]</td><td>PiYG (diverging)</td><td>signed, 3dp</td></tr>
+    <tr><td>Net Impact Index</td><td>[−0.50, +0.50]</td><td>PiYG (diverging)</td><td>signed, 3dp</td></tr>
+    <tr><td>AI Adoption Rate</td><td>[0, 100%]</td><td>Blues</td><td>percent, 1dp</td></tr>
+    <tr><td>Frequency Mean (0–6)</td><td>[0, 6]</td><td>Blues</td><td>ordinal label</td></tr>
+    <tr><td>Improved Quality</td><td>[0, 60%]</td><td>Greens</td><td>percent, 1dp</td></tr>
+    <tr><td>New Opportunities</td><td>[0, 40%]</td><td>Greens</td><td>percent, 1dp</td></tr>
+    <tr><td>Adaptation Pressure</td><td>[0, 60%]</td><td>Reds</td><td>percent, 1dp</td></tr>
+    <tr><td>Job Anxiety</td><td>[0, 60%]</td><td>Reds</td><td>percent, 1dp</td></tr>
+    <tr><td>Job Loss</td><td>[0, 15%]</td><td>Reds</td><td>percent, 1dp</td></tr>
+    <tr><td>Reduced Income</td><td>[0, 20%]</td><td>Reds</td><td>percent, 1dp</td></tr>
+    <tr><td>Net impact at chosen frequency (override)</td><td>[−1, +1]</td><td>PiYG</td><td>signed, 3dp</td></tr>
+  </tbody>
+</table>
+<p><strong>Why colors group this way:</strong></p>
+<ul>
+  <li>PiYG (pink-yellow-green diverging) for signed indices where positive and negative both carry meaning.</li>
+  <li>Blues for neutral volume measures (how much AI is being used).</li>
+  <li>Greens for positive-sentiment shares (good outcomes).</li>
+  <li>Reds for negative-sentiment shares (bad outcomes).</li>
+</ul>
+
+<h3>7.2 Legend</h3>
+<p>The legend shows the active color scale as a horizontal swatch with endpoint labels and a count of visible countries. For Frequency Mean, the endpoint labels are hidden and the seven ordinal labels (Never … Always) are laid out beneath the swatch instead.</p>
+
+<h3>7.3 Number formatting</h3>
+<table>
+  <thead><tr><th>Type</th><th>Format</th></tr></thead>
+  <tbody>
+    <tr><td>Share / percent</td><td><code>XX.X%</code></td></tr>
+    <tr><td>Signed index</td><td><code>+0.123</code> / <code>−0.123</code></td></tr>
+    <tr><td>Ordinal mean (frequency)</td><td><code>3.42 (Weekly)</code> — numeric mean plus nearest ordinal label</td></tr>
+    <tr><td>Counts</td><td>locale-formatted with thousands separators</td></tr>
+    <tr><td>Missing</td><td>em-dash <code>—</code></td></tr>
+  </tbody>
+</table>
+
+<h2 id="country-names">8. Country-name reconciliation</h2>
+<p>The GMP survey writes country names in their full English form (or, in some cases, in a non-Latin script — those are canonicalised at the ETL layer). The Natural Earth 110m atlas uses abbreviated forms ("Dem. Rep. Congo", "Bosnia and Herz.", "S. Sudan") and some renderings that have changed over time ("Czechia", "Türkiye", "eSwatini").</p>
+
+<p>The dashboard ships with an alias table mapping ~60 GMP names to their atlas equivalents. Categories of mapping:</p>
+<ul>
+  <li>Anglo/Latin variants: <code>USA</code>, <code>U.S.</code>, <code>Great Britain</code>, <code>Britain</code> → atlas forms.</li>
+  <li>ISO-3166 long-form: <code>Russian Federation</code> → <code>Russia</code>, <code>Lao People's Democratic Republic</code> → <code>Laos</code>, etc.</li>
+  <li>SAR / annotated names: <code>Hong Kong SAR</code>, <code>Hong Kong, China</code> → <code>Hong Kong</code>.</li>
+  <li>Recent renamings: <code>Turkey</code> → <code>Türkiye</code>, <code>Swaziland</code> → <code>eSwatini</code>.</li>
+  <li>Atlas abbreviations: <code>Bosnia and Herzegovina</code> → <code>Bosnia and Herz.</code>, <code>Central African Republic</code> → <code>Central African Rep.</code>, etc.</li>
+</ul>
+
+<p>A country in the GMP data with no atlas match falls through the table unchanged. If the atlas has no matching feature for that name, the country's value is silently dropped from the map (it will still appear in the country detail if reached by some other path, but cannot be clicked from the map).</p>
+
+<p>This table is the maintenance seam: as new country variants appear in GMP data, they are added here without touching the metric layer.</p>
+
+<h2 id="suppression">9. Suppression and missingness</h2>
+<p>The dashboard applies suppression at three points:</p>
+<ol>
+  <li><strong>Cell-level</strong>, at bake time. Any (stratum × month) cell with <code>n_respondents &lt; 50</code> was flagged at the ETL stage and excluded from the embedded JSON. The dashboard never sees these cells.</li>
+  <li><strong>Frequency-level</strong>, within <code>dose_response</code>. The nested object stores <code>null</code> for any AI-use frequency level (1–6) where fewer than 50 respondents in that cell selected that level. The dashboard renders these as <code>n/a</code> in the dose-response strip and excludes them from the map under the frequency override.</li>
+  <li><strong>Atlas-level</strong>. Countries with no matching atlas feature do not appear on the map regardless of data availability.</li>
+</ol>
+
+<p>Countries shown as gray on the map fall into one of: no respondents in the current filter combination, all relevant cells suppressed at bake time, or the active metric is null in the (otherwise valid) cell.</p>
+
+<p>The legend caption shows the count of countries that <strong>do</strong> have a value under the current filters, alongside the filter summary.</p>
+
+<h2 id="deps">10. External dependencies</h2>
+<p>The dashboard requires network access at view time for:</p>
+<table>
+  <thead><tr><th>Resource</th><th>Source</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td><code>d3@7</code></td><td>jsDelivr</td><td>Color interpolators, JSON fetch helper</td></tr>
+    <tr><td><code>topojson-client@3</code></td><td>jsDelivr</td><td>TopoJSON → GeoJSON conversion</td></tr>
+    <tr><td><code>@observablehq/plot@0.6</code></td><td>jsDelivr</td><td>All chart rendering (map + time series)</td></tr>
+    <tr><td><code>world-atlas@2/countries-110m.json</code></td><td>jsDelivr</td><td>Country geometries (Natural Earth 110m, ~110 KB)</td></tr>
+  </tbody>
+</table>
+
+<p>If any of these fail to load, the dashboard degrades gracefully:</p>
+<ul>
+  <li>Plot/d3/topojson failures break the page (no fallback).</li>
+  <li>A world-atlas fetch failure replaces the map area with a "Could not load world map atlas. Check internet connection." notice; KPIs and the time-series remain functional.</li>
+</ul>
+
+<p>There is no offline mode. The dashboard requires an HTTP origin (not <code>file://</code>) to run, because the CDN imports use ES module syntax.</p>
+
+<h2 id="limits">11. Known limitations</h2>
+<ul>
+  <li><strong>Approximate rolling pooling.</strong> The Last 6 / Last 12 window pools monthly aggregates by weighted mean; the exact value would require pooling respondent-level data first. This biases nothing in expectation but understates uncertainty.</li>
+  <li><strong>No confidence intervals shown.</strong> The ETL emits Wilson 95% CIs for every share metric and SE-based CIs for the mean metrics; the dashboard does not currently render them.</li>
+  <li><strong>No survey weights.</strong> The dashboard inherits the metric layer's choice to treat respondents as an equal-weighted sample. Cross-country comparisons should be read as descriptive, not population-representative.</li>
+  <li><strong>No composition decomposition.</strong> Month-over-month shifts in a country's weighted impact index may reflect a change in respondent mix rather than a change in attitude. The dashboard does not surface this.</li>
+  <li><strong>Static color domains.</strong> The per-metric color domains are chosen for a visually informative spread on the current data and are not adaptive. If the underlying distribution shifts substantially, the domains may need to be reconsidered.</li>
+  <li><strong>Editorial weights.</strong> The <code>IMPACT_WEIGHTS</code> baked into the Weighted Impact Index reflect editorial judgment about relative severity. They are not empirically calibrated. The dashboard takes them as given.</li>
+  <li><strong>Network-dependent.</strong> A failed CDN or atlas fetch breaks the visualization. There is no bundled fallback geometry.</li>
+</ul>
+
+<footer>AI Use Impact Tracker — Dashboard Specification &nbsp;·&nbsp; Global Mind Project, Sapien Labs</footer>
+
+</div>
+</body>
+</html>
