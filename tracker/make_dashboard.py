@@ -162,6 +162,8 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   header { padding-bottom:18px; border-bottom:1px solid var(--rule); margin-bottom:20px; }
   h1 { color:var(--accent); margin:0 0 4px; font-size:26px; }
   header p { color:var(--muted); margin:0; max-width:780px; font-size:14px; }
+  header p a { color:var(--accent2); text-decoration:none; border-bottom:1px solid currentColor; }
+  header p a:hover { color:var(--accent); }
 
   .controls { background:#fff; padding:14px 18px; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); margin-bottom:18px; display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end; }
   .controls .group { display:flex; flex-direction:column; gap:4px; }
@@ -261,7 +263,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
     </div>
-    <p>Self-reported impact of AI use on work, by country and demographic. Built on the Global Mind Project by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
+    <p>Self-reported impact of AI use on work, by country and demographic. Built on the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a> by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
   </header>
 
   <div class="controls">
