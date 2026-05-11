@@ -1015,11 +1015,11 @@ function renderTimeseriesInto(container, data, meta, height) {
   const titleFn = d => `${d.date.toLocaleDateString("en", {month:"short", year:"2-digit"})}: ${fmtVal(d.value)}${d.partial ? " (partial month)" : ""}`;
 
   if (lastIsPartial && data.length >= 2) {
-    // Solid line through completed months; dashed segment to the partial tail.
+    // Solid line through completed months only — no connector to the partial
+    // tail, since a dashed link visually drags the last complete month into
+    // the "uncertain" zone. The outlined dot + caption note carry the signal.
     const solidData = data.slice(0, -1);
-    const tailData = data.slice(-2);
     marks.push(Plot.lineY(solidData, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, curve: "monotone-x" }));
-    marks.push(Plot.lineY(tailData, { x: "date", y: "value", stroke: "#1F3A5F", strokeWidth: 2, strokeDasharray: "4,3", curve: "linear" }));
     // Filled dots for completed months; outlined dot for the partial point.
     marks.push(Plot.dot(solidData, {
       x: "date", y: "value",
