@@ -19,13 +19,22 @@ import pyarrow.parquet as pq
 VERSION = "v1"
 
 
-def write(metrics: dict[str, pd.DataFrame], output_root: str) -> list[str]:
+def write(metrics: dict[str, pd.DataFrame], output_root: str, min_n: int = 50) -> list[str]:
     """
     Write one Parquet file per (stratum_level, year, month) partition.
     Returns the list of paths written.
+
+    Also writes a small _meta.json sidecar at the metrics root recording the
+    suppression threshold used, so the dashboard baker can display the
+    correct number in the page banner.
     """
     root = Path(output_root) / VERSION / "metrics"
     root.mkdir(parents=True, exist_ok=True)
+
+    (root / "_meta.json").write_text(json.dumps({
+        "version": VERSION,
+        "min_n": int(min_n),
+    }, indent=2))
 
     written: list[str] = []
     for level, df in metrics.items():

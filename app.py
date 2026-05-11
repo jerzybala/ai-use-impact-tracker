@@ -44,7 +44,9 @@ HTML_TEMPLATE = None
 build_payload = None
 try:
     from tracker.main import run as run_etl                              # noqa: E402
-    from tracker.make_dashboard import HTML_TEMPLATE, build_payload      # noqa: E402
+    from tracker.make_dashboard import (                                 # noqa: E402
+        HTML_TEMPLATE, build_payload, bake_html, load_meta,
+    )
     print("[app] Tracker imports OK", flush=True)
 except Exception as exc:
     print(f"[app] WARNING: tracker import failed: {exc}", flush=True)
@@ -113,6 +115,15 @@ UPLOAD_PAGE = r"""
   .sessions .row a:hover { text-decoration:underline; }
   .del-btn { background:transparent; border:1px solid var(--rule); color:#9ca3af; font-size:12px; padding:4px 10px; border-radius:6px; cursor:pointer; margin-top:0; }
   .del-btn:hover { color:#b3261e; border-color:#fca5a5; background:#fdecec; }
+  .sessions-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .sessions-header h2 { margin:0; }
+  .del-all-btn { background:transparent; border:1px solid var(--rule); color:#9ca3af; font-size:12px; padding:5px 12px; border-radius:6px; cursor:pointer; }
+  .del-all-btn:hover { color:#b3261e; border-color:#fca5a5; background:#fdecec; }
+
+  .min-n-row { display:flex; align-items:center; gap:10px; margin-top:14px; }
+  .min-n-row label { margin:0; flex-shrink:0; font-size:13px; }
+  .min-n-row input[type="number"] { width:90px; padding:6px 8px; }
+  .min-n-row .hint { color:var(--muted); font-size:12px; font-weight:normal; }
 </style>
 </head>
 <body>
@@ -131,14 +142,23 @@ UPLOAD_PAGE = r"""
       <label for="csv-path">Server-side file path</label>
       <input type="text" id="csv-path" name="path" placeholder="/data/gmp_extract.csv">
 
+      <div class="min-n-row">
+        <label for="min-n">Minimum respondents per cell</label>
+        <input type="number" id="min-n" name="min_n" value="50" min="1" max="10000">
+        <span class="hint">default 50 · lower = noisier</span>
+      </div>
+
       <button type="submit" id="run-btn">Run pipeline</button>
     </form>
     <div id="status"></div>
   </div>
 
   {% if sessions %}
-  <div class="card">
-    <h2>Previous dashboards</h2>
+  <div class="card" id="sessions-card">
+    <div class="sessions-header">
+      <h2>Previous dashboards</h2>
+      <button type="button" class="del-all-btn" id="del-all-btn">Delete all</button>
+    </div>
     <div class="sessions">
       {% for s in sessions %}
       <div class="row" data-job="{{ s.id }}">
@@ -166,6 +186,7 @@ form.addEventListener("submit", async (e) => {
   const fd = new FormData();
   const fileInput = document.getElementById("csv-file");
   const pathInput = document.getElementById("csv-path");
+  const minNInput = document.getElementById("min-n");
 
   if (fileInput.files.length) {
     fd.append("file", fileInput.files[0]);
@@ -177,6 +198,8 @@ form.addEventListener("submit", async (e) => {
     btn.disabled = false;
     return;
   }
+
+  fd.append("min_n", (minNInput.value || "50").trim());
 
   try {
     const res = await fetch("/ingest", { method: "POST", body: fd });
@@ -195,6 +218,28 @@ form.addEventListener("submit", async (e) => {
     btn.disabled = false;
   }
 });
+
+const delAllBtn = document.getElementById("del-all-btn");
+if (delAllBtn) {
+  delAllBtn.addEventListener("click", async () => {
+    if (!confirm("Delete ALL previous dashboards? This cannot be undone.")) return;
+    delAllBtn.disabled = true;
+    try {
+      const res = await fetch("/delete-all", { method: "POST" });
+      if (res.ok) {
+        const card = document.getElementById("sessions-card");
+        if (card) card.remove();
+      } else {
+        const txt = await res.text();
+        alert("Delete all failed: " + txt);
+        delAllBtn.disabled = false;
+      }
+    } catch (err) {
+      alert("Delete all failed: " + err.message);
+      delAllBtn.disabled = false;
+    }
+  });
+}
 
 async function deleteSession(id) {
   if (!confirm("Delete this dashboard? This cannot be undone.")) return;
@@ -278,11 +323,19 @@ def ingest():
     if not csv_path:
         return jsonify({"error": "No file provided"}), 400
 
+    # Defensive parsing of min_n form field
+    try:
+        min_n = int(request.form.get("min_n", "50"))
+        if min_n < 1 or min_n > 10000:
+            min_n = 50
+    except (ValueError, TypeError):
+        min_n = 50
+
     JOBS[job_id] = {"status": "running", "progress": "Starting ETL…", "error": None}
 
     def _run():
         try:
-            JOBS[job_id]["progress"] = "Running ETL pipeline…"
+            JOBS[job_id]["progress"] = f"Running ETL pipeline (min_n={min_n})…"
             output_root = str(job_dir / "tracker_output" / "v1" / "metrics")
             # Point the ETL at the right output location
             etl_out = str(job_dir / "tracker_output")
@@ -290,6 +343,7 @@ def ingest():
                 "source": "csv",
                 "source_config": {"path": str(csv_path)},
                 "output_root": etl_out,
+                "min_n": min_n,
             })
 
             JOBS[job_id]["progress"] = "Baking dashboard…"
@@ -308,12 +362,13 @@ def ingest():
 def _bake_dashboard(job_dir: Path):
     """Bake preview.html using the shared make_dashboard payload builder."""
     metrics_root = job_dir / "tracker_output" / "v1" / "metrics"
+    meta = load_meta(metrics_root)
     payload = build_payload(metrics_root)
 
     out_dir = job_dir / "dashboard"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    html = HTML_TEMPLATE.replace("__DATA_JSON__", payload)
+    html = bake_html(payload, meta)
     (out_dir / "preview.html").write_text(html, encoding="utf-8")
 
 
@@ -366,6 +421,30 @@ def delete_session(job_id):
 def docs(filename):
     """Serve documentation files (markdown, html, pdf) from /docs."""
     return send_from_directory(str(DOCS_DIR), filename)
+
+
+@app.route("/delete-all", methods=["POST"])
+def delete_all():
+    """Remove every baked dashboard session from disk + the in-memory registry."""
+    data_root = DATA_DIR.resolve()
+    removed = 0
+    failed: list[str] = []
+    for d in list(DATA_DIR.iterdir()):
+        if not d.is_dir():
+            continue
+        try:
+            target = d.resolve()
+            # Defensive: refuse anything that could escape DATA_DIR
+            if data_root not in target.parents:
+                continue
+            shutil.rmtree(target)
+            JOBS.pop(d.name, None)
+            removed += 1
+        except Exception as exc:
+            failed.append(f"{d.name}: {exc}")
+    if failed:
+        return f"removed {removed}; failed: {'; '.join(failed)}", 500
+    return f"removed {removed}"
 
 
 @app.route("/latest")

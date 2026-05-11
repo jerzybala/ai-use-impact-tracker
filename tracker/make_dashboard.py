@@ -105,6 +105,24 @@ def build_payload(tracker_out: Path) -> str:
     return json.dumps(data, separators=(",", ":"))
 
 
+def load_meta(tracker_out: Path) -> dict:
+    """Read the _meta.json sidecar written by parquet_writer. Falls back to defaults."""
+    p = tracker_out / "_meta.json"
+    if p.exists():
+        try:
+            return json.loads(p.read_text())
+        except Exception:
+            pass
+    return {"min_n": 50}
+
+
+def bake_html(payload: str, meta: dict) -> str:
+    """Apply both template substitutions in one place."""
+    return (HTML_TEMPLATE
+            .replace("__DATA_JSON__", payload)
+            .replace("__MIN_N__", str(int(meta.get("min_n", 50)))))
+
+
 def main():
     if not TRACKER_OUT.exists():
         raise SystemExit(
@@ -112,10 +130,11 @@ def main():
             f"  python3 main.py --source csv --path <your.csv> --out ./output"
         )
     print("Loading Parquet outputs…")
+    meta = load_meta(TRACKER_OUT)
     payload = build_payload(TRACKER_OUT)
-    print(f"Embedded JSON size: {len(payload)/1024:.1f} KB")
+    print(f"Embedded JSON size: {len(payload)/1024:.1f} KB · min_n={meta.get('min_n', 50)}")
 
-    html = HTML_TEMPLATE.replace("__DATA_JSON__", payload)
+    html = bake_html(payload, meta)
     DASHBOARD_DIR.mkdir(parents=True, exist_ok=True)
     OUT_HTML.write_text(html, encoding="utf-8")
     print(f"Wrote {OUT_HTML}")
@@ -242,7 +261,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
     </div>
-    <p>Self-reported impact of AI use on work, by country and demographic. Built on the Global Mind Project by Sapien Labs. Cells with fewer than 50 respondents are suppressed.</p>
+    <p>Self-reported impact of AI use on work, by country and demographic. Built on the Global Mind Project by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
   </header>
 
   <div class="controls">

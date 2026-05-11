@@ -53,7 +53,7 @@ def wilson_ci(k: np.ndarray, n: np.ndarray, z: float = 1.96):
 # Per-stratum aggregation
 # ---------------------------------------------------------------------------
 
-def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
+def _aggregate(df: pd.DataFrame, group_cols: list[str], min_n: int = MIN_N) -> pd.DataFrame:
     """Compute all §5 metrics for one grouping set."""
     # Derived per-row composites
     df = df.copy()
@@ -73,7 +73,7 @@ def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
         rec = dict(zip(group_cols, keys))
         n = len(g)
         rec["n_respondents"] = n
-        rec["suppressed"] = n < MIN_N
+        rec["suppressed"] = n < min_n
 
         if rec["suppressed"]:
             rows.append(rec)
@@ -114,7 +114,7 @@ def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
             rec[f"{label}_ci_low"] = float(lo[0]) if n_denom > 0 else None
             rec[f"{label}_ci_high"] = float(hi[0]) if n_denom > 0 else None
 
-        if n_denom >= MIN_N:
+        if n_denom >= min_n:
             for flag in [c for c in ALL_IMPACT_FLAGS if c != "impact_na"]:
                 _share(denom_df[flag], f"impact_share_{flag.replace('impact_', '')}")
             _share(denom_df["is_positive"], "positive_impact_share")
@@ -145,7 +145,7 @@ def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
         dose = {}
         for lvl in range(7):
             lvl_df = denom_df[denom_df["ai_freq_int"] == lvl]
-            if len(lvl_df) >= MIN_N:
+            if len(lvl_df) >= min_n:
                 pos = lvl_df["is_positive"].mean()
                 neg = lvl_df["is_negative"].mean()
                 dose[str(lvl)] = float(pos - neg)
@@ -158,12 +158,14 @@ def _aggregate(df: pd.DataFrame, group_cols: list[str]) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def compute_metrics(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def compute_metrics(df: pd.DataFrame, min_n: int = MIN_N) -> dict[str, pd.DataFrame]:
     """
     Return {stratum_level: metrics_dataframe} for all STRATUM_LEVELS.
     Each dataframe is partitioned by (year, month) downstream.
+
+    min_n: cells with fewer than this many respondents are suppressed.
     """
-    print(f"[metrics] computing across {len(STRATUM_LEVELS)} stratum levels on {len(df):,} rows")
+    print(f"[metrics] computing across {len(STRATUM_LEVELS)} stratum levels on {len(df):,} rows (min_n={min_n})")
 
     # Base time cols always present
     time_cols = ["year", "month"]
@@ -182,7 +184,7 @@ def compute_metrics(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
     out: dict[str, pd.DataFrame] = {}
     for level, cols in level_to_cols.items():
         group = time_cols + cols
-        agg = _aggregate(df, group)
+        agg = _aggregate(df, group, min_n=min_n)
         agg["stratum_level"] = level
         out[level] = agg
         print(f"[metrics]   {level}: {len(agg):,} cells "

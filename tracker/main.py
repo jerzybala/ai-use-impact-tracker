@@ -33,11 +33,13 @@ def run(config: dict) -> dict:
       source: "csv" | "elasticsearch"
       source_config: dict forwarded to the chosen source
       output_root:   str (local path or s3://...)
+      min_n:         int (suppression threshold, default 50)
 
     Returns a summary dict suitable for logs / Lambda response.
     """
     t0 = time.time()
-    print(f"[run] starting with source={config['source']}")
+    min_n = int(config.get("min_n", 50))
+    print(f"[run] starting with source={config['source']} min_n={min_n}")
 
     # 1. Source
     if config["source"] == "csv":
@@ -53,10 +55,10 @@ def run(config: dict) -> dict:
     clean = normalize(raw)
 
     # 3. Metrics
-    metrics = compute_metrics(clean)
+    metrics = compute_metrics(clean, min_n=min_n)
 
     # 4. Publish
-    paths = write_parquet(metrics, config["output_root"])
+    paths = write_parquet(metrics, config["output_root"], min_n=min_n)
 
     elapsed = time.time() - t0
     summary = {
@@ -65,6 +67,7 @@ def run(config: dict) -> dict:
         "stratum_levels": list(metrics.keys()),
         "files_written": len(paths),
         "output_root": config["output_root"],
+        "min_n": min_n,
         "elapsed_seconds": round(elapsed, 1),
     }
     print(f"[run] done in {elapsed:.1f}s — summary: {json.dumps(summary, indent=2)}")
@@ -78,6 +81,8 @@ def _cli():
     p.add_argument("--out", required=True, help="Output root (local path or s3://)")
     p.add_argument("--year-month-from", nargs=2, type=int, metavar=("YEAR", "MONTH"))
     p.add_argument("--year-month-to", nargs=2, type=int, metavar=("YEAR", "MONTH"))
+    p.add_argument("--min-n", type=int, default=50,
+                   help="Suppress stratum cells with fewer than this many respondents (default: 50)")
     args = p.parse_args()
 
     source_config = {}
@@ -92,6 +97,7 @@ def _cli():
         "source": args.source,
         "source_config": source_config,
         "output_root": args.out,
+        "min_n": args.min_n,
     })
 
 
