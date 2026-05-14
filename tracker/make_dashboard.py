@@ -463,7 +463,7 @@ const atlasName = n => NAME_ALIASES[n] ?? n;
 // dynamically from the visible data (see computeDomain in renderMap), so
 // the darkest color always lands on the actual max observed.
 const METRIC_META = {
-  weighted_impact_index:            { label:"Weighted Impact Index",       scheme:"Greens", isShare:false, signed:true  },
+  weighted_impact_index:            { label:"Weighted Impact Index",       scheme:"Greens", isShare:false, signed:false },
   adoption_rate:                    { label:"AI Adoption Rate",            scheme:"Blues",  isShare:true,  signed:false },
   impact_share_improved_quality:    { label:"Improved Quality (share)",    scheme:"Greens", isShare:true,  signed:false },
   impact_share_new_opportunities:   { label:"New Opportunities (share)",   scheme:"Greens", isShare:true,  signed:false },
