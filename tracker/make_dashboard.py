@@ -317,17 +317,12 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <label>Gender</label>
       <select id="gender-select">
         <option value="">All</option>
-        <option>Female</option><option>Male</option><option>Non-binary</option>
-        <option>Other/Intersex</option><option>Prefer not to say</option>
       </select>
     </div>
     <div class="group">
       <label>Age band</label>
       <select id="age-select">
         <option value="">All</option>
-        <option>18-20</option><option>21-24</option><option>25-34</option>
-        <option>35-44</option><option>45-54</option><option>55-64</option>
-        <option>65-74</option><option>75-84</option><option>85+</option>
       </select>
     </div>
     <div class="group">
@@ -468,7 +463,7 @@ const atlasName = n => NAME_ALIASES[n] ?? n;
 // dynamically from the visible data (see computeDomain in renderMap), so
 // the darkest color always lands on the actual max observed.
 const METRIC_META = {
-  weighted_impact_index:            { label:"Weighted Impact Index",       scheme:"PiYG",   isShare:false, signed:true  },
+  weighted_impact_index:            { label:"Weighted Impact Index",       scheme:"Greens", isShare:false, signed:true  },
   adoption_rate:                    { label:"AI Adoption Rate",            scheme:"Blues",  isShare:true,  signed:false },
   impact_share_improved_quality:    { label:"Improved Quality (share)",    scheme:"Greens", isShare:true,  signed:false },
   impact_share_new_opportunities:   { label:"New Opportunities (share)",   scheme:"Greens", isShare:true,  signed:false },
@@ -506,6 +501,43 @@ for (const c of allCountries) {
   opt.value = c;
   opt.textContent = c;
   countrySel.appendChild(opt);
+}
+
+// Build the gender dropdown from country_gender rows — only includes
+// genders that have at least one non-suppressed cell anywhere (i.e. some
+// country meets the min-N threshold). Below-threshold categories are
+// hidden so users don't pick options that show "no data" everywhere.
+const genderOrder = ["Female", "Male", "Non-binary", "Other/Intersex", "Prefer not to say"];
+const availableGenders = new Set(DATA.country_gender.map(r => r.gender_clean).filter(Boolean));
+for (const g of genderOrder) {
+  if (!availableGenders.has(g)) continue;
+  const opt = document.createElement("option");
+  opt.value = g; opt.textContent = g;
+  genderSel.appendChild(opt);
+}
+// Any extras outside the canonical order (defensive).
+for (const g of [...availableGenders].sort()) {
+  if (genderOrder.includes(g)) continue;
+  const opt = document.createElement("option");
+  opt.value = g; opt.textContent = g;
+  genderSel.appendChild(opt);
+}
+
+// Same below-threshold filter for age bands — only ages with at least one
+// non-suppressed cell appear in the dropdown.
+const ageOrder = ["18-20", "21-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-84", "85+"];
+const availableAges = new Set(DATA.country_age_band.map(r => r.age_band).filter(Boolean));
+for (const a of ageOrder) {
+  if (!availableAges.has(a)) continue;
+  const opt = document.createElement("option");
+  opt.value = a; opt.textContent = a;
+  ageSel.appendChild(opt);
+}
+for (const a of [...availableAges].sort()) {
+  if (ageOrder.includes(a)) continue;
+  const opt = document.createElement("option");
+  opt.value = a; opt.textContent = a;
+  ageSel.appendChild(opt);
 }
 
 prevBtn.addEventListener("click", () => {
