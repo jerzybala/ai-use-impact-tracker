@@ -1,11 +1,11 @@
 """
-Bake a self-contained, single-page AI Use Impact Tracker dashboard.
+Bake a self-contained, single-page AI Impact Tracker dashboard.
 
 Layout:
-  - Top filter row (month, color-by metric, gender, age band, frequency)
-  - 4 KPI cards (weighted impact index, respondents, adoption, impact denom)
-  - World choropleth (Observable Plot + topojson, CDN)
-  - Country detail card on click
+  - Header with title and top-right "Global · last N months" summary card
+  - Top filter row (month, period, work-impact factor, gender, age band, country)
+  - Detail panel (Global by default; switches to a country when selected)
+  - Side-by-side world choropleth + time-series chart
 
 Data layers embedded:
   - global
@@ -13,11 +13,6 @@ Data layers embedded:
   - country_gender
   - country_age_band
   - country_gender_age_band
-
-Filter logic picks the appropriate stratum so every metric shown is the
-exact precomputed value (no JS-side aggregation). Frequency filter
-overrides color-by to net_impact_index at the chosen ai_freq level via
-the dose_response column.
 
 Run AFTER main.py:
     python3 make_dashboard.py
@@ -149,7 +144,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AI Use Impact Tracker</title>
+<title>AI Impact Tracker — Impact of AI on Work</title>
 <style>
   :root {
     --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
@@ -161,9 +156,25 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .shell { max-width:1280px; margin:0 auto; padding:28px 36px 60px; }
   header { padding-bottom:18px; border-bottom:1px solid var(--rule); margin-bottom:20px; }
   h1 { color:var(--accent); margin:0 0 4px; font-size:26px; }
+  h1 .sub { color:var(--ink); font-weight:600; }
   header p { color:var(--muted); margin:0; max-width:780px; font-size:14px; }
   header p a { color:var(--accent2); text-decoration:none; border-bottom:1px solid currentColor; }
   header p a:hover { color:var(--accent); }
+
+  .header-top { display:flex; justify-content:space-between; align-items:flex-start; gap:24px; flex-wrap:wrap; }
+  .title-block { flex:1 1 360px; min-width:0; }
+  .help-menu { position:relative; flex-shrink:0; align-self:flex-start; }
+
+  .summary-card { background:#fff; border:2px solid var(--hero); border-radius:10px; padding:12px 16px; box-shadow:0 1px 2px rgba(0,0,0,0.06); min-width:280px; }
+  .summary-card .summary-head { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; margin-bottom:6px; }
+  .summary-card .summary-grid { display:flex; gap:22px; align-items:flex-end; }
+  .summary-card .summary-grid > div { display:flex; flex-direction:column; gap:2px; }
+  .summary-card .lbl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+  .summary-card .val { font-size:24px; font-weight:600; color:var(--hero); line-height:1.1; }
+  .summary-card .val.ink { color:var(--accent); }
+  .summary-card .summary-sub { font-size:11px; color:var(--muted); margin-top:6px; }
+  .summary-card .summary-total { font-size:11px; color:var(--muted); margin-top:2px; }
+  .summary-card .summary-total strong { color:var(--ink); font-weight:600; }
 
   .controls { background:#fff; padding:14px 18px; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); margin-bottom:18px; display:flex; flex-wrap:wrap; gap:18px; align-items:flex-end; }
   .controls .group { display:flex; flex-direction:column; gap:4px; }
@@ -176,15 +187,10 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .controls .reset { margin-left:auto; background:transparent; border:none; color:var(--accent2); cursor:pointer; font-size:13px; padding:6px 8px; }
   .controls .reset:hover { text-decoration:underline; }
 
-  .kpi-grid { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; margin-bottom:18px; }
-  @media (max-width:900px) { .kpi-grid { grid-template-columns:repeat(2, 1fr); } }
-  .card { background:#fff; padding:14px 18px; border-radius:10px; box-shadow:0 1px 2px rgba(0,0,0,0.06); }
-  .card .label { font-size:11px; color:var(--muted); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
-  .card .value { font-size:28px; font-weight:600; color:var(--accent); line-height:1.1; }
-  .card .sub { font-size:12px; color:var(--muted); margin-top:4px; }
-  .card.hero { border:2px solid var(--hero); }
-  .card.hero .value { color:var(--hero); font-size:32px; }
   .pos { color:var(--pos) !important; } .neg { color:var(--neg) !important; }
+
+  .map-ts-grid { display:grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap:18px; }
+  @media (max-width:980px) { .map-ts-grid { grid-template-columns: 1fr; } }
 
   .map-panel { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px 18px 14px; }
   .map-header { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; gap:16px; flex-wrap:wrap; }
@@ -201,25 +207,20 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .legend .ticks span:last-child { transform:translateX(-100%); }
   .legend .note { margin-left:auto; align-self:center; }
 
-  .ts-panel { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-top:18px; display:none; }
-  .ts-panel.active { display:block; }
-  .ts-panel h3 { margin:0 0 10px; font-size:15px; color:#333; font-weight:600; }
+  .ts-panel { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; }
+  .ts-panel h3 { margin:0 0 6px; font-size:15px; color:#333; font-weight:600; }
   .ts-panel .ts-meta { font-size:12px; color:var(--muted); margin-bottom:8px; }
-  .ts-chart svg { width:100%; height:auto; max-height:260px; display:block; }
-  .ts-chart-detail svg { width:100%; height:auto; max-height:200px; display:block; }
-  .country-detail { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-top:18px; display:none; }
-  .country-detail.active { display:block; }
-  .country-detail h3 { margin:0 0 12px; color:var(--accent); font-size:18px; }
-  .country-detail .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px; }
-  .country-detail .stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
-  .country-detail .stat .v { font-size:18px; font-weight:600; color:var(--accent); }
-  .country-detail .close { float:right; cursor:pointer; color:var(--muted); border:none; background:transparent; font-size:18px; }
+  .ts-chart svg { width:100%; height:auto; max-height:500px; display:block; }
+
+  .detail-panel { background:#fff; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,0.06); padding:18px; margin-bottom:18px; }
+  .detail-panel h3 { margin:0 0 12px; color:var(--accent); font-size:18px; }
+  .detail-panel .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; }
+  .detail-panel .stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
+  .detail-panel .stat .v { font-size:18px; font-weight:600; color:var(--accent); }
   .dose-block { margin-top:14px; padding-top:12px; border-top:1px solid var(--rule); }
   .dose-block .dose-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
   .dose-items { display:flex; flex-wrap:wrap; gap:6px 18px; line-height:1.5; }
   .dose-items > span { font-size:13px; color:var(--muted); white-space:nowrap; }
-  .ts-detail-block { margin-top:24px; padding-top:14px; border-top:1px solid var(--rule); clear:both; }
-  .ts-detail-block .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
 
   .empty { color:var(--muted); font-style:italic; padding:14px; text-align:center; }
 
@@ -235,8 +236,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .map-tip .row strong { color:var(--ink); font-weight:600; }
   .map-tip .row.muted { color:var(--muted); font-style:italic; }
 
-  .header-top { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
-  .help-menu { position:relative; flex-shrink:0; }
   .help-btn { background:var(--chip); color:var(--accent); border:1px solid var(--rule);
     border-radius:6px; padding:6px 12px; font-size:13px; font-weight:600; cursor:pointer; }
   .help-btn:hover { background:#d8e2ec; }
@@ -253,7 +252,25 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
 <div class="shell">
   <header>
     <div class="header-top">
-      <h1>AI Use Impact Tracker</h1>
+      <div class="title-block">
+        <h1>AI Impact Tracker: <span class="sub">Impact of AI on Work</span></h1>
+        <p>Self-reported impact of AI use on work, by country and demographic. Built on the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a> by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
+      </div>
+      <div class="summary-card" id="summary-card">
+        <div class="summary-head" id="summary-head">Global · last 3 months</div>
+        <div class="summary-grid">
+          <div>
+            <div class="lbl" id="summary-metric-lbl">Weighted Impact Index</div>
+            <div class="val" id="summary-metric-val">—</div>
+          </div>
+          <div>
+            <div class="lbl">Respondents</div>
+            <div class="val ink" id="summary-n">—</div>
+          </div>
+        </div>
+        <div class="summary-sub" id="summary-period">—</div>
+        <div class="summary-total">Total respondents to date: <strong id="summary-total-n">—</strong></div>
+      </div>
       <div class="help-menu">
         <button type="button" class="help-btn" id="help-btn" aria-haspopup="true" aria-expanded="false">Help ▾</button>
         <div class="help-dropdown" id="help-dropdown" role="menu">
@@ -263,7 +280,6 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         </div>
       </div>
     </div>
-    <p>Self-reported impact of AI use on work, by country and demographic. Built on the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a> by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
   </header>
 
   <div class="controls">
@@ -279,17 +295,16 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       <label>Period</label>
       <select id="window-select" title="Pool the selected month with prior months (weighted by respondent count)">
         <option value="1">Single month</option>
+        <option value="3">Last 3 months</option>
         <option value="6">Last 6 months</option>
         <option value="12">Last 12 months</option>
       </select>
     </div>
     <div class="group">
-      <label>Color map by</label>
+      <label>Select Work Impact Factor</label>
       <select id="metric-select">
         <option value="weighted_impact_index">Weighted Impact Index</option>
-        <option value="net_impact_index">Net Impact Index</option>
         <option value="adoption_rate">AI Adoption Rate</option>
-        <option value="freq_mean">Frequency Mean (0–6)</option>
         <option value="impact_share_improved_quality">Improved Quality (share)</option>
         <option value="impact_share_new_opportunities">New Opportunities (share)</option>
         <option value="impact_share_adaptation_pressure">Adaptation Pressure (share)</option>
@@ -316,73 +331,44 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
       </select>
     </div>
     <div class="group">
-      <label>Frequency</label>
-      <select id="freq-select" title="When set, the map switches to net impact index at this AI-use frequency">
-        <option value="">All</option>
-        <option value="1">Rarely</option>
-        <option value="2">Monthly</option>
-        <option value="3">Weekly</option>
-        <option value="4">Daily</option>
-        <option value="5">Constantly</option>
-        <option value="6">Always</option>
+      <label>Country</label>
+      <select id="country-select" title="Show detail and trend for the selected country">
+        <option value="">Global</option>
       </select>
     </div>
     <button class="reset" id="reset-btn">Reset filters</button>
   </div>
 
-  <div class="kpi-grid">
-    <div class="card hero">
-      <div class="label">Weighted Impact Index</div>
-      <div class="value" id="kpi-wii">—</div>
-      <div class="sub" id="kpi-wii-sub"></div>
-    </div>
-    <div class="card">
-      <div class="label">Respondents</div>
-      <div class="value" id="kpi-n">—</div>
-      <div class="sub" id="kpi-n-sub"></div>
-    </div>
-    <div class="card">
-      <div class="label">AI Adoption Rate</div>
-      <div class="value" id="kpi-adopt">—</div>
-      <div class="sub">share using AI at all</div>
-    </div>
-    <div class="card">
-      <div class="label">Impact Denominator</div>
-      <div class="value" id="kpi-denom">—</div>
-      <div class="sub">AI users with impact response</div>
-    </div>
+  <div class="detail-panel" id="detail-panel">
+    <h3 id="cd-name">Global</h3>
+    <div id="cd-body"></div>
   </div>
 
-  <div class="map-panel">
-    <div class="map-header">
-      <h3 id="map-title">World map — Weighted Impact Index</h3>
-      <div class="map-meta" id="map-meta"></div>
-    </div>
-    <div id="map-container"><div class="empty">Loading map…</div></div>
-    <div class="legend">
-      <span id="legend-min">−1</span>
-      <div class="bar-wrap">
-        <span class="swatch" id="legend-swatch"></span>
-        <div class="ticks" id="legend-ticks"></div>
+  <div class="map-ts-grid">
+    <div class="map-panel">
+      <div class="map-header">
+        <h3 id="map-title">World map — Weighted Impact Index</h3>
+        <div class="map-meta" id="map-meta"></div>
       </div>
-      <span id="legend-max">+1</span>
-      <span class="note" id="legend-note"></span>
+      <div id="map-container"><div class="empty">Loading map…</div></div>
+      <div class="legend">
+        <span id="legend-min">−1</span>
+        <div class="bar-wrap">
+          <span class="swatch" id="legend-swatch"></span>
+          <div class="ticks" id="legend-ticks"></div>
+        </div>
+        <span id="legend-max">+1</span>
+        <span class="note" id="legend-note"></span>
+      </div>
+    </div>
+    <div class="ts-panel" id="ts-panel">
+      <h3 id="ts-title">Trend over time</h3>
+      <div class="ts-meta" id="ts-meta"></div>
+      <div class="ts-chart" id="ts-chart"></div>
     </div>
   </div>
 
   <div class="map-tip" id="map-tip"></div>
-
-  <div class="ts-panel" id="ts-panel">
-    <h3 id="ts-title">Trend over time</h3>
-    <div class="ts-meta" id="ts-meta"></div>
-    <div class="ts-chart" id="ts-chart"></div>
-  </div>
-
-  <div class="country-detail" id="country-detail">
-    <button class="close" id="cd-close" title="Close">×</button>
-    <h3 id="cd-name"></h3>
-    <div id="cd-body"></div>
-  </div>
 </div>
 
 <script>const DATA = __DATA_JSON__;</script>
@@ -478,25 +464,24 @@ const NAME_ALIASES = {
 };
 const atlasName = n => NAME_ALIASES[n] ?? n;
 
-// Domains chosen so the visible color spread reflects realistic between-country
-// variation; outliers are clamped (color.clamp:true) instead of stretching the
-// scale. The static [-1,1] / [0,1] bounds left almost everything washed out.
+// Color scheme + value-type config per metric. Domain is now computed
+// dynamically from the visible data (see computeDomain in renderMap), so
+// the darkest color always lands on the actual max observed.
 const METRIC_META = {
-  weighted_impact_index: { label:"Weighted Impact Index", domain:[-0.3, 0.3], scheme:"PiYG",   isShare:false, signed:true  },
-  net_impact_index:      { label:"Net Impact Index",      domain:[-0.5, 0.5], scheme:"PiYG",   isShare:false, signed:true  },
-  adoption_rate:         { label:"AI Adoption Rate",      domain:[0, 1],      scheme:"Blues",  isShare:true,  signed:false },
-  freq_mean:             { label:"Frequency Mean",        domain:[0, 6],      scheme:"Blues",  isShare:false, signed:false, freqOrdinal:true },
-  impact_share_improved_quality:    { label:"Improved Quality (share)",    domain:[0, 0.6],  scheme:"Greens", isShare:true, signed:false },
-  impact_share_new_opportunities:   { label:"New Opportunities (share)",   domain:[0, 0.4],  scheme:"Greens", isShare:true, signed:false },
-  impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
-  impact_share_job_anxiety:         { label:"Job Anxiety (share)",         domain:[0, 0.6],  scheme:"Reds",   isShare:true, signed:false },
-  impact_share_job_loss:            { label:"Job Loss (share)",            domain:[0, 0.15], scheme:"Reds",   isShare:true, signed:false },
-  impact_share_reduced_income:      { label:"Reduced Income (share)",      domain:[0, 0.2],  scheme:"Reds",   isShare:true, signed:false },
+  weighted_impact_index:            { label:"Weighted Impact Index",       scheme:"PiYG",   isShare:false, signed:true  },
+  adoption_rate:                    { label:"AI Adoption Rate",            scheme:"Blues",  isShare:true,  signed:false },
+  impact_share_improved_quality:    { label:"Improved Quality (share)",    scheme:"Greens", isShare:true,  signed:false },
+  impact_share_new_opportunities:   { label:"New Opportunities (share)",   scheme:"Greens", isShare:true,  signed:false },
+  impact_share_adaptation_pressure: { label:"Adaptation Pressure (share)", scheme:"Reds",   isShare:true,  signed:false },
+  impact_share_job_anxiety:         { label:"Job Anxiety (share)",         scheme:"Reds",   isShare:true,  signed:false },
+  impact_share_job_loss:            { label:"Job Loss (share)",            scheme:"Reds",   isShare:true,  signed:false },
+  impact_share_reduced_income:      { label:"Reduced Income (share)",      scheme:"Reds",   isShare:true,  signed:false },
 };
 
 const $ = id => document.getElementById(id);
 const monthSel = $("month-select"), metricSel = $("metric-select");
-const genderSel = $("gender-select"), ageSel = $("age-select"), freqSel = $("freq-select");
+const genderSel = $("gender-select"), ageSel = $("age-select");
+const countrySel = $("country-select");
 const winSel = $("window-select");
 const prevBtn = $("prev-month"), nextBtn = $("next-month"), resetBtn = $("reset-btn");
 
@@ -511,19 +496,31 @@ months.forEach(m => {
 });
 monthSel.value = months[months.length - 1];
 
+// Default Period to "Last 3 months"
+winSel.value = "3";
+
+// Build the country dropdown from country-level rows.
+const allCountries = [...new Set(DATA.country.map(r => r.country_clean).filter(Boolean))].sort();
+for (const c of allCountries) {
+  const opt = document.createElement("option");
+  opt.value = c;
+  opt.textContent = c;
+  countrySel.appendChild(opt);
+}
+
 prevBtn.addEventListener("click", () => {
   const i = months.indexOf(monthSel.value);
-  if (i > 0) { monthSel.value = months[i-1]; hideDetail(); render(); }
+  if (i > 0) { monthSel.value = months[i-1]; render(); }
 });
 nextBtn.addEventListener("click", () => {
   const i = months.indexOf(monthSel.value);
-  if (i < months.length - 1) { monthSel.value = months[i+1]; hideDetail(); render(); }
+  if (i < months.length - 1) { monthSel.value = months[i+1]; render(); }
 });
 resetBtn.addEventListener("click", () => {
   metricSel.value = "weighted_impact_index";
-  genderSel.value = ""; ageSel.value = ""; freqSel.value = "";
-  winSel.value = "1";
-  hideDetail(); render();
+  genderSel.value = ""; ageSel.value = ""; countrySel.value = "";
+  winSel.value = "3";
+  render();
 });
 
 // World atlas
@@ -640,6 +637,37 @@ function windowRowsRaw() {
   });
 }
 
+// Aggregate country-level rows (already filtered by month/gender/age) into a
+// single global pseudo-row that mirrors the country row shape. Used for the
+// detail panel and the top summary card when Country = Global.
+function aggregateGlobal(rows) {
+  if (!rows.length) return null;
+  const o = {
+    country_clean: "Global",
+    n_respondents: rows.reduce((s, r) => s + (r.n_respondents || 0), 0),
+    n_impact_denominator: rows.reduce((s, r) => s + (r.n_impact_denominator || 0), 0),
+  };
+  for (const [f, wf] of Object.entries(POOL_FIELDS)) {
+    let num = 0, den = 0;
+    for (const r of rows) {
+      const v = r[f], wt = r[wf] || 0;
+      if (v != null && wt > 0) { num += v * wt; den += wt; }
+    }
+    o[f] = den > 0 ? num / den : null;
+  }
+  o.dose_response = {};
+  for (const lvl of [1,2,3,4,5,6]) {
+    let num = 0, den = 0;
+    for (const r of rows) {
+      const v = r.dose_response?.[lvl];
+      const wt = r.n_impact_denominator || 0;
+      if (v != null && wt > 0) { num += v * wt; den += wt; }
+    }
+    o.dose_response[lvl] = den > 0 ? num / den : null;
+  }
+  return o;
+}
+
 function ymKey(r) { return `${r.year}-${String(r.month).padStart(2,"0")}`; }
 function ymToDate(ym) { const [y, m] = ym.split("-").map(Number); return new Date(y, m - 1, 1); }
 
@@ -647,7 +675,7 @@ function ymToDate(ym) { const [y, m] = ym.split("-").map(Number); return new Dat
 // Also records `n` (sum of n_respondents across countries in that month) so
 // markPartial() can detect the in-flight current month from its low sample.
 function monthlySeries(rows) {
-  const isVolume = !freqSel.value && (metricSel.value === "adoption_rate" || metricSel.value === "freq_mean");
+  const isVolume = metricSel.value === "adoption_rate";
   const weightField = isVolume ? "n_respondents" : "n_impact_denominator";
   const byMonth = new Map();
   for (const r of rows) {
@@ -687,15 +715,10 @@ function markPartial(data) {
 }
 
 function activeMetricMeta() {
-  if (freqSel.value !== "") {
-    return { label:`Net Impact at "${freqSel.options[freqSel.selectedIndex].textContent}" use`, domain:[-1,1], scheme:"PiYG", isShare:false, signed:true, freqMode:true };
-  }
   return METRIC_META[metricSel.value];
 }
 
 function metricForRow(r) {
-  const f = freqSel.value;
-  if (f !== "") return r.dose_response ? (r.dose_response[f] ?? null) : null;
   return r[metricSel.value] ?? null;
 }
 
@@ -713,52 +736,53 @@ function filterSummary() {
   const parts = [periodLabel()];
   if (genderSel.value) parts.push(genderSel.value);
   if (ageSel.value) parts.push("Age " + ageSel.value);
-  if (freqSel.value !== "") parts.push("Freq: " + freqSel.options[freqSel.selectedIndex].textContent);
   return parts.join(" · ");
 }
-
-const FREQ_LABELS = ["Never", "Rarely", "Monthly", "Weekly", "Daily", "Constantly", "Always"];
-const freqOrdinal = v => v == null ? null : FREQ_LABELS[Math.max(0, Math.min(6, Math.round(v)))];
 
 const fmtSigned = v => v == null ? "—" : (v >= 0 ? "+" : "") + v.toFixed(3);
 const fmtPct = v => v == null ? "—" : (v * 100).toFixed(1) + "%";
 const fmtNum = v => v == null ? "—" : v.toLocaleString();
-const fmtFreqMean = v => v == null ? "—" : `${v.toFixed(2)} (${freqOrdinal(v)})`;
 const fmtMetric = (v, meta) => {
   if (v == null) return "—";
   if (meta.isShare) return fmtPct(v);
   if (meta.signed) return fmtSigned(v);
-  if (meta.freqOrdinal) return fmtFreqMean(v);
   return v.toFixed(2);
 };
 
-// KPIs
-function renderKPIs() {
+// Total respondents across the entire dataset (all months, global rows).
+// Computed once at startup so the summary card can always show it.
+const TOTAL_RESPONDENTS_TO_DATE = DATA.global.reduce(
+  (s, r) => s + (r.n_respondents || 0), 0);
+
+// Top-right summary card — global weighted average of the active metric over
+// the selected period, plus respondents in period and total respondents to date.
+function renderSummary() {
   const rows = currentRows();
+  const meta = activeMetricMeta();
   const totalN = rows.reduce((s, r) => s + (r.n_respondents || 0), 0);
-  const totalDenom = rows.reduce((s, r) => s + (r.n_impact_denominator || 0), 0);
-  const wmean = (field, weightField) => {
-    let num = 0, den = 0;
-    for (const r of rows) {
-      const v = r[field], w = r[weightField] || 0;
-      if (v != null && w > 0) { num += v * w; den += w; }
-    }
-    return den > 0 ? num / den : null;
-  };
-  const wii = wmean("weighted_impact_index", "n_impact_denominator");
-  const adopt = wmean("adoption_rate", "n_respondents");
+  const weightField = meta.isShare ? "n_impact_denominator"
+                                   : (metricSel.value === "adoption_rate" ? "n_respondents"
+                                                                          : "n_impact_denominator");
+  let num = 0, den = 0;
+  for (const r of rows) {
+    const v = r[metricSel.value], w = r[weightField] || 0;
+    if (v != null && w > 0) { num += v * w; den += w; }
+  }
+  const avg = den > 0 ? num / den : null;
 
-  const wiiEl = $("kpi-wii");
-  wiiEl.textContent = fmtSigned(wii);
-  wiiEl.classList.remove("pos", "neg");
-  if (wii != null && wii > 0) wiiEl.classList.add("pos");
-  if (wii != null && wii < 0) wiiEl.classList.add("neg");
+  const head = `Global · ${periodLabel()}`;
+  $("summary-head").textContent = head;
 
-  $("kpi-wii-sub").textContent = filterSummary();
-  $("kpi-n").textContent = fmtNum(totalN);
-  $("kpi-n-sub").textContent = filterSummary();
-  $("kpi-adopt").textContent = fmtPct(adopt);
-  $("kpi-denom").textContent = fmtNum(totalDenom);
+  $("summary-metric-lbl").textContent = meta.label;
+  const valEl = $("summary-metric-val");
+  valEl.textContent = fmtMetric(avg, meta);
+  valEl.classList.remove("pos", "neg");
+  if (meta.signed && avg != null && avg > 0) valEl.classList.add("pos");
+  if (meta.signed && avg != null && avg < 0) valEl.classList.add("neg");
+
+  $("summary-n").textContent = fmtNum(totalN);
+  $("summary-period").textContent = filterSummary();
+  $("summary-total-n").textContent = fmtNum(TOTAL_RESPONDENTS_TO_DATE);
 }
 
 // Build an intensified interpolator: skip the near-white tail of the
@@ -775,6 +799,26 @@ function makeInterp(meta) {
   }
   // Sequential: start at 22% of the scheme so low values aren't white.
   return t => base(0.22 + 0.74 * t);
+}
+
+// Dynamic color domain: stretch the scale so the actual max in the visible
+// data lands at the darkest end of the scheme. For diverging (signed) metrics
+// the domain is kept symmetric around 0 so 0 stays at the neutral midpoint
+// and the larger absolute extreme drives saturation. Falls back to a small
+// neighborhood around the only value when min == max.
+function computeDomain(values, meta) {
+  if (!values.length) return meta.signed ? [-0.1, 0.1] : [0, 1];
+  let lo = Math.min(...values);
+  let hi = Math.max(...values);
+  if (meta.signed) {
+    const m = Math.max(Math.abs(lo), Math.abs(hi));
+    return m > 0 ? [-m, m] : [-0.1, 0.1];
+  }
+  if (hi - lo < 1e-9) {
+    const pad = Math.max(Math.abs(hi) * 0.05, 0.01);
+    return [Math.max(0, lo - pad), hi + pad];
+  }
+  return [lo, hi];
 }
 
 // Map
@@ -794,11 +838,12 @@ function renderMap() {
     rowByName[key] = r;
   }
 
+  const domain = computeDomain(Object.values(valueByName), meta);
   const fmt = v => fmtMetric(v, meta);
   const interp = makeInterp(meta);
   const colorOpts = interp
-    ? { type: "linear", interpolate: interp, domain: meta.domain, clamp: true, unknown: "#cbd5e1" }
-    : { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, unknown: "#cbd5e1" };
+    ? { type: "linear", interpolate: interp, domain, clamp: true, unknown: "#cbd5e1" }
+    : { type: "linear", scheme: meta.scheme, domain, clamp: true, unknown: "#cbd5e1" };
 
   const plot = Plot.plot({
     projection: "equal-earth",
@@ -852,7 +897,7 @@ function renderMap() {
       if (!f || !f.properties || !f.properties.name) return;
       const name = f.properties.name;
       p.style.cursor = "pointer";
-      p.addEventListener("click", () => showDetail(name, rowByName[name]));
+      p.addEventListener("click", () => selectCountryByAtlasName(name));
       p.addEventListener("mouseenter", e => {
         const v = valueByName[name];
         const r = rowByName[name];
@@ -878,26 +923,13 @@ function renderMap() {
   $("map-title").textContent = "World map — " + meta.label;
   $("map-meta").textContent = `${rows.length.toLocaleString()} country rows · cells under n=50 are suppressed`;
 
-  // Legend — labels reflect the active domain (with clamp).
-  // For Frequency Mean, show all 7 ordinal labels under the swatch and
-  // hide the min/max numeric labels. For other metrics show min/max.
-  const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(1);
-  const ticksEl = $("legend-ticks");
-  ticksEl.innerHTML = "";
-  if (meta.freqOrdinal) {
-    $("legend-min").style.visibility = "hidden";
-    $("legend-max").style.visibility = "hidden";
-    for (const lbl of FREQ_LABELS) {
-      const s = document.createElement("span");
-      s.textContent = lbl;
-      ticksEl.appendChild(s);
-    }
-  } else {
-    $("legend-min").style.visibility = "visible";
-    $("legend-max").style.visibility = "visible";
-    $("legend-min").textContent = fmtBound(meta.domain[0]);
-    $("legend-max").textContent = fmtBound(meta.domain[1]);
-  }
+  // Legend — labels reflect the dynamic domain (darkest end = max in data).
+  const fmtBound = v => meta.isShare ? (v * 100).toFixed(0) + "%" : meta.signed ? (v >= 0 ? "+" : "") + v.toFixed(2) : v.toFixed(2);
+  $("legend-ticks").innerHTML = "";
+  $("legend-min").style.visibility = "visible";
+  $("legend-max").style.visibility = "visible";
+  $("legend-min").textContent = fmtBound(domain[0]);
+  $("legend-max").textContent = fmtBound(domain[1]);
   if (interp) {
     const stops = Array.from({length: 11}, (_, i) => interp(i / 10));
     $("legend-swatch").style.background = `linear-gradient(to right, ${stops.join(",")})`;
@@ -905,30 +937,48 @@ function renderMap() {
   $("legend-note").textContent = `${Object.keys(valueByName).length} countries shown · ${filterSummary()}`;
 }
 
-// Country detail
-function hideDetail() {
-  $("country-detail").classList.remove("active");
-  // Restore the global time-series panel if a multi-month window is active.
-  if (winSel.value !== "1") $("ts-panel").classList.add("active");
+// Reverse atlas → GMP name lookup for map clicks. We need to find the
+// country_clean value that matches an atlas feature name. Built lazily from
+// the country-level rows so we only include names that actually have data.
+function gmpNameFromAtlas(atlas) {
+  for (const r of DATA.country) {
+    if (r.country_clean && atlasName(r.country_clean) === atlas) return r.country_clean;
+  }
+  return null;
 }
-$("cd-close").addEventListener("click", hideDetail);
+function selectCountryByAtlasName(atlas) {
+  const gmp = gmpNameFromAtlas(atlas);
+  if (gmp) {
+    countrySel.value = gmp;
+    render();
+  }
+}
 
-function showDetail(name, row) {
-  const el = $("country-detail");
+// Detail panel — always visible. Shows the Global aggregate (countrySel
+// empty) or the row matching the currently-selected country.
+function renderDetail() {
+  const country = countrySel.value;
+  const rows = currentRows();
+
+  let row, name;
+  if (!country) {
+    name = "Global";
+    row = aggregateGlobal(rows);
+  } else {
+    name = country;
+    row = rows.find(r => r.country_clean === country) || null;
+  }
+
   $("cd-name").textContent = name;
   if (!row) {
-    $("cd-body").innerHTML = '<div class="empty">No data for this country under the current filters.</div>';
-    el.classList.add("active");
-    el.scrollIntoView({behavior: "smooth", block: "nearest"});
+    $("cd-body").innerHTML = `<div class="empty">No data for ${name} under the current filters.</div>`;
     return;
   }
+
   const stats = [
     ["Respondents", fmtNum(row.n_respondents)],
-    ["Impact denom", fmtNum(row.n_impact_denominator)],
     ["Adoption rate", fmtPct(row.adoption_rate)],
-    ["Frequency mean", fmtFreqMean(row.freq_mean)],
     ["Weighted impact", fmtSigned(row.weighted_impact_index)],
-    ["Net impact", fmtSigned(row.net_impact_index)],
     ["Improved quality", fmtPct(row.impact_share_improved_quality)],
     ["New opportunities", fmtPct(row.impact_share_new_opportunities)],
     ["Adaptation pressure", fmtPct(row.impact_share_adaptation_pressure)],
@@ -957,29 +1007,6 @@ function showDetail(name, row) {
     if (hasAny) html += `<div class="dose-block"><div class="dose-label">Dose-response (net impact by AI-use frequency · n/a means &lt;50 respondents at that level)</div><div class="dose-items">${items.join("")}</div></div>`;
   }
   $("cd-body").innerHTML = html;
-
-  // Country-specific time series (only when a multi-month window is active).
-  if (winSel.value !== "1") {
-    const meta = activeMetricMeta();
-    const countryRows = windowRowsRaw().filter(r => atlasName(r.country_clean) === name);
-    const series = countryRows.map(r => {
-      const v = metricForRow(r);
-      const ym = ymKey(r);
-      return v != null ? { ym, date: ymToDate(ym), value: v, n: r.n_respondents || 0 } : null;
-    }).filter(Boolean).sort((a, b) => a.date - b.date);
-    markPartial(series);
-
-    const tsBlock = document.createElement("div");
-    tsBlock.className = "ts-detail-block";
-    tsBlock.innerHTML = `<div class="lbl">${meta.label} over time — ${name}</div><div class="ts-chart-detail"></div>`;
-    $("cd-body").appendChild(tsBlock);
-    renderTimeseriesInto(tsBlock.querySelector(".ts-chart-detail"), series, meta, 200);
-  }
-
-  el.classList.add("active");
-  // Hide the global time-series while looking at a single country.
-  $("ts-panel").classList.remove("active");
-  el.scrollIntoView({behavior: "smooth", block: "nearest"});
 }
 
 // Fit a tight y-domain around the time-series data with a small padding,
@@ -987,7 +1014,7 @@ function showDetail(name, row) {
 // against the map's full visualization range.
 function fitTSDomain(data, meta) {
   const vals = data.map(d => d.value).filter(v => Number.isFinite(v));
-  if (vals.length === 0) return meta.domain;
+  if (vals.length === 0) return meta.signed ? [-0.1, 0.1] : [0, 1];
   const min = Math.min(...vals);
   const max = Math.max(...vals);
   const range = max - min;
@@ -1043,11 +1070,12 @@ function renderTimeseriesInto(container, data, meta, height) {
     }));
   }
   const interp = makeInterp(meta);
+  const colorDomain = computeDomain(data.map(d => d.value).filter(Number.isFinite), meta);
   const colorOpts = interp
-    ? { type: "linear", interpolate: interp, domain: meta.domain, clamp: true, legend: false }
-    : { type: "linear", scheme: meta.scheme, domain: meta.domain, clamp: true, legend: false };
+    ? { type: "linear", interpolate: interp, domain: colorDomain, clamp: true, legend: false }
+    : { type: "linear", scheme: meta.scheme, domain: colorDomain, clamp: true, legend: false };
   const plot = Plot.plot({
-    width: 880,
+    width: 600,
     height: height || 220,
     marginTop: 16,
     marginRight: 20,
@@ -1062,29 +1090,62 @@ function renderTimeseriesInto(container, data, meta, height) {
   container.appendChild(plot);
 }
 
+// Rows for the trend chart: last 12 months ending at the selected month,
+// filtered by gender/age but independent of the Period filter. Lets the
+// trend stay useful even when the Period is set to "Last 3 months".
+function tsRowsRaw() {
+  const i = months.indexOf(monthSel.value);
+  const lo = Math.max(0, i - 11);
+  const sel = new Set(months.slice(lo, i + 1));
+  const { rows, gender, age } = pickStratum();
+  return rows.filter(r => {
+    const ym = `${r.year}-${String(r.month).padStart(2,"0")}`;
+    if (!sel.has(ym)) return false;
+    if (gender && r.gender_clean !== gender) return false;
+    if (age && r.age_band !== age) return false;
+    return true;
+  });
+}
+
 function renderTimeseries() {
-  const panel = $("ts-panel");
-  if (winSel.value === "1") {
-    panel.classList.remove("active");
+  const meta = activeMetricMeta();
+  const country = countrySel.value;
+  const name = country || "Global";
+
+  let data;
+  if (country) {
+    const cRows = tsRowsRaw().filter(r => r.country_clean === country);
+    data = cRows.map(r => {
+      const v = metricForRow(r);
+      const ym = ymKey(r);
+      return v != null ? { ym, date: ymToDate(ym), value: v, n: r.n_respondents || 0 } : null;
+    }).filter(Boolean).sort((a, b) => a.date - b.date);
+  } else {
+    data = monthlySeries(tsRowsRaw());
+  }
+  markPartial(data);
+
+  $("ts-title").textContent = `${meta.label} over time — ${name}`;
+
+  if (!data || data.length < 3) {
+    $("ts-meta").textContent = filterSummary();
+    $("ts-chart").innerHTML = '<div class="empty">Insufficient data to show a trend.</div>';
     return;
   }
-  panel.classList.add("active");
-  const meta = activeMetricMeta();
-  const data = monthlySeries(windowRowsRaw());
-  markPartial(data);
+
   const partialNote = (data.length && data[data.length - 1].partial) ? " · last month partial (in-progress data)" : "";
-  $("ts-title").textContent = `${meta.label} over time`;
-  $("ts-meta").textContent = `${data.length} of ${selectedMonths().size} months · weighted across visible countries · ${filterSummary()}${partialNote}`;
-  renderTimeseriesInto($("ts-chart"), data, meta, 240);
+  $("ts-meta").textContent = `${data.length} months · ${filterSummary()}${partialNote}`;
+  renderTimeseriesInto($("ts-chart"), data, meta, 500);
 }
 
 function render() {
-  renderKPIs();
+  renderSummary();
+  renderDetail();
   renderMap();
   renderTimeseries();
 }
 
-[metricSel, genderSel, ageSel, freqSel, monthSel, winSel].forEach(el => el.addEventListener("change", () => { hideDetail(); render(); }));
+[metricSel, genderSel, ageSel, countrySel, monthSel, winSel].forEach(el => el.addEventListener("change", render));
 
 // Help menu
 const helpBtn = $("help-btn");
