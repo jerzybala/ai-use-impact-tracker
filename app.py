@@ -523,6 +523,59 @@ def latest():
 
 
 # ---------------------------------------------------------------------------
+# Bundled-CSV upload (one-time, token-gated)
+#
+# Only active when BUNDLED_UPLOAD_TOKEN is set in the environment. Lets an
+# operator stream the bundled CSV directly onto the volume from a local
+# machine, e.g.
+#
+#   curl -X POST -H "X-Auth-Token: $TOKEN" \
+#        --data-binary @gmp_ai_only_2026-04-14.csv \
+#        https://<app>.up.railway.app/admin/upload-bundled
+#
+# Once the file is in place, clear the token env var (or leave it set if
+# you want to refresh the dataset on a schedule).
+# ---------------------------------------------------------------------------
+import hmac  # noqa: E402
+
+@app.route("/admin/upload-bundled", methods=["POST"])
+def upload_bundled():
+    expected = os.environ.get("BUNDLED_UPLOAD_TOKEN", "")
+    if not expected:
+        return jsonify({"error": "Bundled upload is disabled (no BUNDLED_UPLOAD_TOKEN set)"}), 404
+    provided = request.headers.get("X-Auth-Token", "")
+    if not hmac.compare_digest(expected, provided):
+        return jsonify({"error": "Invalid or missing X-Auth-Token"}), 403
+
+    BUNDLED_CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+    # Stream to a temp file in the same directory, then atomic-rename so the
+    # bundled file is never half-written from the app's perspective.
+    tmp = BUNDLED_CSV_PATH.with_suffix(BUNDLED_CSV_PATH.suffix + ".part")
+    bytes_written = 0
+    chunk_size = 1024 * 1024  # 1 MB
+    try:
+        with open(tmp, "wb") as out:
+            while True:
+                chunk = request.stream.read(chunk_size)
+                if not chunk:
+                    break
+                out.write(chunk)
+                bytes_written += len(chunk)
+        os.replace(tmp, BUNDLED_CSV_PATH)
+    except Exception as exc:
+        try: tmp.unlink(missing_ok=True)
+        except Exception: pass
+        return jsonify({"error": f"Upload failed: {exc}"}), 500
+
+    return jsonify({
+        "ok": True,
+        "path": str(BUNDLED_CSV_PATH),
+        "bytes": bytes_written,
+        "size_mb": round(bytes_written / (1024 * 1024), 1),
+    })
+
+
+# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
