@@ -123,7 +123,10 @@ UPLOAD_PAGE = r"""
   #status.error   { display:block; background:#fdecec; color:#b3261e; }
   .spinner { display:inline-block; width:14px; height:14px; border:2px solid var(--accent2); border-top-color:transparent; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:8px; }
   @keyframes spin { to { transform:rotate(360deg); } }
-  footer { text-align:center; color:var(--muted); font-size:12px; margin-top:40px; }
+  footer { text-align:center; color:var(--muted); font-size:13px; margin-top:48px; line-height:1.6; }
+  footer .sub { font-size:11px; opacity:0.8; margin-top:2px; }
+  footer a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; transition:border-color .15s; }
+  footer a:hover { border-bottom-color:var(--accent2); }
   a { color:var(--accent2); }
 
   /* Previous dashboards list */
@@ -204,7 +207,10 @@ UPLOAD_PAGE = r"""
   </div>
   {% endif %}
 
-  <footer>Global Mind Project — Sapien Labs</footer>
+  <footer>
+    <div>Data from the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a></div>
+    <div class="sub">A research initiative by <a href="https://sapienlabs.org/" target="_blank" rel="noopener">Sapien Labs</a></div>
+  </footer>
 </div>
 <script>
 const form = document.getElementById("upload-form");
