@@ -70,6 +70,25 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 DOCS_DIR = HERE / "docs"
 
+# Path to a pre-bundled CSV that ships with the deployment (e.g. uploaded
+# once to a Railway Volume). When present, the upload page shows a
+# one-click "Use latest GMP extract" option that runs the pipeline against
+# this file. Override with the BUNDLED_CSV_PATH env var.
+BUNDLED_CSV_PATH = Path(os.environ.get("BUNDLED_CSV_PATH", "/data/bundled.csv"))
+
+
+def bundled_csv_meta() -> dict | None:
+    """Return display info for the bundled CSV, or None if not present."""
+    if not BUNDLED_CSV_PATH.is_file():
+        return None
+    st = BUNDLED_CSV_PATH.stat()
+    size_mb = st.st_size / (1024 * 1024)
+    return {
+        "path": str(BUNDLED_CSV_PATH),
+        "size_mb": f"{size_mb:.0f}",
+        "mtime": time.strftime("%Y-%m-%d", time.localtime(st.st_mtime)),
+    }
+
 # In-memory job registry: job_id → {status, progress, error, html_path, ...}
 JOBS: dict[str, dict] = {}
 
@@ -124,6 +143,13 @@ UPLOAD_PAGE = r"""
   .min-n-row label { margin:0; flex-shrink:0; font-size:13px; }
   .min-n-row input[type="number"] { width:90px; padding:6px 8px; }
   .min-n-row .hint { color:var(--muted); font-size:12px; font-weight:normal; }
+
+  .bundled-btn { display:flex; flex-direction:column; align-items:flex-start; gap:4px;
+    width:100%; text-align:left; padding:14px 18px; margin:0 0 4px; cursor:pointer;
+    background:var(--accent); color:#fff; border:none; border-radius:8px;
+    font-size:15px; font-weight:600; }
+  .bundled-btn:hover { background:var(--accent2); }
+  .bundled-btn .meta { font-size:12px; font-weight:normal; opacity:0.85; }
 </style>
 </head>
 <body>
@@ -133,6 +159,14 @@ UPLOAD_PAGE = r"""
 
   <div class="card">
     <h2>Load data</h2>
+    {% if bundled %}
+    <button type="button" class="bundled-btn" id="use-bundled-btn"
+            data-path="{{ bundled.path }}">
+      Use latest GMP extract
+      <span class="meta">{{ bundled.size_mb }} MB · last updated {{ bundled.mtime }}</span>
+    </button>
+    <div class="or">— or upload your own —</div>
+    {% endif %}
     <form id="upload-form" enctype="multipart/form-data">
       <label for="csv-file">Upload CSV file</label>
       <input type="file" id="csv-file" name="file" accept=".csv">
@@ -219,6 +253,38 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
+const bundledBtn = document.getElementById("use-bundled-btn");
+if (bundledBtn) {
+  bundledBtn.addEventListener("click", async () => {
+    btn.disabled = true;
+    bundledBtn.disabled = true;
+    status.className = "running";
+    status.innerHTML = '<span class="spinner"></span>Loading bundled dataset…';
+
+    const fd = new FormData();
+    fd.append("path", bundledBtn.dataset.path);
+    fd.append("min_n", (document.getElementById("min-n").value || "50").trim());
+
+    try {
+      const res = await fetch("/ingest", { method: "POST", body: fd });
+      const data = await res.json();
+      if (data.error) {
+        status.className = "error";
+        status.textContent = "Error: " + data.error;
+        btn.disabled = false;
+        bundledBtn.disabled = false;
+        return;
+      }
+      pollJob(data.job_id);
+    } catch (err) {
+      status.className = "error";
+      status.textContent = "Failed: " + err.message;
+      btn.disabled = false;
+      bundledBtn.disabled = false;
+    }
+  });
+}
+
 const delAllBtn = document.getElementById("del-all-btn");
 if (delAllBtn) {
   delAllBtn.addEventListener("click", async () => {
@@ -294,7 +360,7 @@ def index():
             # Use directory mtime for the label
             ts = time.strftime("%Y-%m-%d %H:%M", time.localtime(html.stat().st_mtime))
             sessions.append({"id": d.name, "label": f"Dashboard — {ts}"})
-    return render_template_string(UPLOAD_PAGE, sessions=sessions[:20])
+    return render_template_string(UPLOAD_PAGE, sessions=sessions[:20], bundled=bundled_csv_meta())
 
 
 @app.route("/ingest", methods=["POST"])
