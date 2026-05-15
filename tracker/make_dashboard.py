@@ -155,8 +155,11 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   html, body { margin:0; background:#f6f7f9; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color:var(--ink); }
   .shell { max-width:1280px; margin:0 auto; padding:28px 36px 60px; }
   header { padding-bottom:18px; border-bottom:1px solid var(--rule); margin-bottom:20px; }
-  h1 { color:var(--accent); margin:0 0 4px; font-size:26px; }
-  h1 .sub { color:var(--ink); font-weight:600; }
+  h1 { color:var(--accent); margin:0 0 4px; font-size:26px; display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+  h1 .topic-select { font:inherit; color:var(--ink); font-weight:600; background:var(--chip);
+    border:1px solid var(--rule); border-radius:8px; padding:2px 10px; cursor:pointer;
+    line-height:1.2; }
+  h1 .topic-select:hover { background:#d8e2ec; }
   header p { color:var(--muted); margin:0; max-width:780px; font-size:14px; }
   header p a { color:var(--accent2); text-decoration:none; border-bottom:1px solid currentColor; }
   header p a:hover { color:var(--accent); }
@@ -253,8 +256,9 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <header>
     <div class="header-top">
       <div class="title-block">
-        <h1>AI Impact Tracker: <span class="sub">Impact of AI on Work</span></h1>
-        <p>Self-reported impact of AI use on work, by country and demographic. Built on the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a> by Sapien Labs. Cells with fewer than __MIN_N__ respondents are suppressed.</p>
+        <h1>AI Impact Tracker: <select class="topic-select" id="topic-select" aria-label="Tracker topic">
+          <option>Impact of AI on Work</option>
+        </select></h1>
       </div>
       <div class="summary-card" id="summary-card">
         <div class="summary-head" id="summary-head">Global · last 3 months</div>
