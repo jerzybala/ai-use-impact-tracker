@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>How the Metrics Are Computed</title>
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --pos:#1a7f4e; --neg:#b3261e; --rule:#e5e7eb; --chip:#E8EEF4;
+    --code-bg:#f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height:1.55; font-size:15px; }
+  .shell { max-width:920px; margin:0 auto; padding:40px 36px 80px; }
+
+  h1 { color:var(--accent); font-size:30px; margin:0 0 8px; letter-spacing:-0.01em; }
+  h2 { color:var(--accent); font-size:22px; margin:36px 0 12px; padding-top:18px;
+    border-top:1px solid var(--rule); letter-spacing:-0.01em; }
+  h3 { color:var(--accent2); font-size:17px; margin:24px 0 8px; }
+  h4 { color:var(--accent2); font-size:15px; margin:18px 0 6px; font-weight:600; }
+  .lede { color:var(--muted); margin:0 0 24px; font-size:15px; }
+
+  p { margin:8px 0 12px; }
+  ul, ol { margin:8px 0 16px; padding-left:24px; }
+  li { margin:5px 0; }
+  strong { color:var(--ink); }
+  a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; }
+  a:hover { border-bottom-color:var(--accent2); }
+
+  code { background:var(--code-bg); padding:1px 6px; border-radius:4px; font-size:90%;
+    font-family: "SF Mono", Menlo, Consolas, monospace; color:#334155; }
+  pre { background:var(--code-bg); padding:12px 16px; border-radius:6px; overflow-x:auto;
+    font-family: "SF Mono", Menlo, Consolas, monospace; font-size:13px; line-height:1.5;
+    color:#334155; margin:10px 0 16px; }
+  pre code { background:transparent; padding:0; font-size:inherit; }
+
+  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:14px; }
+  th, td { padding:8px 12px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.4px; }
+  tr:last-child td { border-bottom:none; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+
+  blockquote { margin:14px 0; padding:10px 16px; border-left:3px solid var(--accent2);
+    background:#fff; color:var(--ink); border-radius:0 6px 6px 0; }
+  blockquote p { margin:4px 0; }
+
+  .toc { background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:14px 22px; margin:18px 0 28px; }
+  .toc h3 { margin:0 0 8px; font-size:13px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.6px; }
+  .toc ul { margin:0; padding-left:18px; }
+  .toc li { margin:4px 0; }
+
+  .pos { color:var(--pos); font-weight:600; }
+  .neg { color:var(--neg); font-weight:600; }
+
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+<h1>How the Metrics Are Computed</h1>
+<p class="lede">A detailed walk-through of every metric the AI Impact Tracker publishes, including the exact formulas, denominators, suppression rules, and how the dashboard's Period filter pools months together.<br/>
+Companion to <a href="COLUMNS.html">COLUMNS.html</a> (source-side survey columns) and <a href="TRACKER.html">TRACKER.html</a> (the spec/contract for the metric layer). All formulas match the implementation in <code>tracker/src/pipeline/metrics.py</code> and <code>tracker/src/pipeline/normalize.py</code>.</p>
+
+<div class="toc">
+<h3>Contents</h3>
+<ul>
+  <li><a href="#one">1. Building blocks</a></li>
+  <li><a href="#two">2. Core indicators</a></li>
+  <li><a href="#three">3. The impact denominator</a></li>
+  <li><a href="#four">4. Impact share metrics</a></li>
+  <li><a href="#five">5. Positive / negative / net impact</a></li>
+  <li><a href="#six">6. Weighted Impact Index</a></li>
+  <li><a href="#seven">7. Dose-response</a></li>
+  <li><a href="#eight">8. Confidence intervals</a></li>
+  <li><a href="#nine">9. Minimum-N suppression</a></li>
+  <li><a href="#ten">10. Stratification (country × gender × age)</a></li>
+  <li><a href="#eleven">11. Rolling-window pooling (Period filter)</a></li>
+  <li><a href="#twelve">12. Summary card (dashboard)</a></li>
+  <li><a href="#thirteen">13. Known limitations</a></li>
+</ul>
+</div>
+
+<h2 id="one">1. Building blocks</h2>
+<p>Every metric is computed from one row per <strong>respondent per month</strong>. Three derived fields drive almost everything else.</p>
+
+<h3><code>ai_freq_int</code> — AI-use frequency on a 0–6 ordinal scale</h3>
+<p>Mapped from the raw <code>ai_freq</code> text answer:</p>
+<table>
+  <thead><tr><th class="num">Integer</th><th>Label</th><th>Raw text mapped</th></tr></thead>
+  <tbody>
+    <tr><td class="num">0</td><td>Never</td><td>"I have never used an AI assistant"</td></tr>
+    <tr><td class="num">1</td><td>Rarely</td><td>"Rarely"</td></tr>
+    <tr><td class="num">2</td><td>Monthly</td><td>"A few times a month"</td></tr>
+    <tr><td class="num">3</td><td>Weekly</td><td>"Several days a week"</td></tr>
+    <tr><td class="num">4</td><td>Daily</td><td>"Several times a day"</td></tr>
+    <tr><td class="num">5</td><td>Constantly</td><td>"Constantly", "Constamment", "Constantly (when awake)"</td></tr>
+    <tr><td class="num">6</td><td>Always</td><td>"All of the time"</td></tr>
+    <tr><td class="num">—</td><td>null</td><td>"N/A" or anything not recognised</td></tr>
+  </tbody>
+</table>
+
+<h3><code>is_user</code> — does this respondent use AI at all?</h3>
+<pre><code>is_user = (ai_freq_int &gt;= 1)</code></pre>
+<p>A respondent at level 0 ("Never") is <strong>not</strong> an AI user.</p>
+
+<h3>Impact flags — one-hot from <code>ai_impact_work</code></h3>
+<p>The pipe-delimited <code>ai_impact_work</code> answer is split into nine boolean columns; each respondent can have multiple flags set true.</p>
+<table>
+  <thead><tr><th>Flag</th><th>Triggered by answer</th></tr></thead>
+  <tbody>
+    <tr><td><code>impact_improved_quality</code></td><td>"Improved my work quality or output"</td></tr>
+    <tr><td><code>impact_new_opportunities</code></td><td>"Created new job or income opportunities"</td></tr>
+    <tr><td><code>impact_adaptation_pressure</code></td><td>"Increased pressure to adapt or work faster"</td></tr>
+    <tr><td><code>impact_job_anxiety</code></td><td>"Made me worry about the future of my job or industry"</td></tr>
+    <tr><td><code>impact_job_loss</code></td><td>"Caused me to lose my job"</td></tr>
+    <tr><td><code>impact_reduced_income</code></td><td>"Reduced my income or made it harder to find work"</td></tr>
+    <tr><td><code>impact_none</code></td><td>"No impact"</td></tr>
+    <tr><td><code>impact_other</code></td><td>"Another impact not listed here" (plus any unknown raw option)</td></tr>
+    <tr><td><code>impact_not_sure</code></td><td>"Not sure"</td></tr>
+    <tr><td><code>impact_na</code></td><td>Raw value was null / "N/A" / blank</td></tr>
+  </tbody>
+</table>
+
+<p>Two derived booleans roll the flags into a positive / negative direction:</p>
+<pre><code>is_positive = impact_improved_quality OR impact_new_opportunities
+
+is_negative = impact_adaptation_pressure
+           OR impact_job_anxiety
+           OR impact_job_loss
+           OR impact_reduced_income</code></pre>
+<p><code>impact_none</code>, <code>impact_other</code>, <code>impact_not_sure</code>, and <code>impact_na</code> are treated as neither positive nor negative.</p>
+
+<h2 id="two">2. Core indicators</h2>
+<p>These are reported for <strong>every stratum × month</strong>.</p>
+
+<h3><code>n_respondents</code></h3>
+<p>Plain count of respondents in the cell.</p>
+<pre><code>n_respondents = COUNT(rows in stratum × month)</code></pre>
+<p>This is also the denominator for <code>adoption_rate</code> and <code>freq_mean</code>.</p>
+
+<h3><code>adoption_rate</code> — share who use AI at all</h3>
+<pre><code>adoption_rate = COUNT(is_user = true) / n_respondents</code></pre>
+<p>Range <code>[0, 1]</code>. Includes respondents at every <code>ai_freq</code> level from "Rarely" upward.</p>
+
+<h3><code>freq_mean</code> — mean AI-use frequency on the 0–6 scale</h3>
+<pre><code>freq_mean = MEAN(ai_freq_int)</code></pre>
+<p>over the rows in the cell that have a non-null <code>ai_freq_int</code>. Range <code>[0, 6]</code>. A <code>freq_mean</code> of <code>2.08</code> means roughly "monthly use" on average; <code>4.0</code> means "daily" on average.</p>
+<blockquote><p>Note: <code>freq_mean</code> is computed and stored, but no longer surfaced as a selectable map metric on the redesigned dashboard.</p></blockquote>
+
+<h3><code>freq_share_0</code> … <code>freq_share_6</code> — distribution</h3>
+<p>For each ordinal level <code>k = 0…6</code>:</p>
+<pre><code>freq_share_k = COUNT(ai_freq_int = k) / COUNT(ai_freq_int is not null)</code></pre>
+<p>The seven shares sum to <code>1</code>.</p>
+
+<h2 id="three">3. The impact denominator</h2>
+<p>The impact metrics in §4–§6 do <strong>not</strong> use <code>n_respondents</code> as their denominator. They use a stricter base population, the <strong>impact denominator</strong>:</p>
+<pre><code>in_impact_denom = is_user AND has_impact_response</code></pre>
+<p>where <code>has_impact_response</code> means at least one of the eight real impact flags is true (all flags except <code>impact_na</code>):</p>
+<pre><code>has_impact_response = impact_improved_quality
+                  OR impact_new_opportunities
+                  OR impact_adaptation_pressure
+                  OR impact_job_anxiety
+                  OR impact_job_loss
+                  OR impact_reduced_income
+                  OR impact_none
+                  OR impact_other
+                  OR impact_not_sure</code></pre>
+<p>So the impact denominator (reported as <code>n_impact_denominator</code>) equals the count of respondents who:</p>
+<ol>
+  <li>use AI at all (<code>ai_freq_int &gt;= 1</code>), <strong>and</strong></li>
+  <li>answered the impact question (gave at least one option, including "No impact" or "Not sure").</li>
+</ol>
+<p>Respondents who never use AI, or whose impact answer was blank / N/A, are excluded. The dashboard tooltip describes this base as "AI users with impact response".</p>
+
+<h2 id="four">4. Impact share metrics</h2>
+<p>For each impact flag listed in §1, the share is computed against the impact denominator:</p>
+<pre><code>impact_share_{flag} = COUNT(flag = true AND in_impact_denom)
+                   / n_impact_denominator</code></pre>
+<p>The metrics published are:</p>
+<table>
+  <thead><tr><th>Metric</th><th>Numerator flag</th></tr></thead>
+  <tbody>
+    <tr><td><code>impact_share_improved_quality</code></td><td><code>impact_improved_quality</code></td></tr>
+    <tr><td><code>impact_share_new_opportunities</code></td><td><code>impact_new_opportunities</code></td></tr>
+    <tr><td><code>impact_share_adaptation_pressure</code></td><td><code>impact_adaptation_pressure</code></td></tr>
+    <tr><td><code>impact_share_job_anxiety</code></td><td><code>impact_job_anxiety</code></td></tr>
+    <tr><td><code>impact_share_job_loss</code></td><td><code>impact_job_loss</code></td></tr>
+    <tr><td><code>impact_share_reduced_income</code></td><td><code>impact_reduced_income</code></td></tr>
+    <tr><td><code>impact_share_none</code></td><td><code>impact_none</code></td></tr>
+    <tr><td><code>impact_share_other</code></td><td><code>impact_other</code></td></tr>
+    <tr><td><code>impact_share_not_sure</code></td><td><code>impact_not_sure</code></td></tr>
+  </tbody>
+</table>
+<p>Each is a value in <code>[0, 1]</code>.</p>
+<p><strong>The shares do not have to sum to 1.</strong> Respondents can select more than one impact, so a given respondent can contribute to multiple shares. A respondent who picked "Improved my work quality" <em>and</em> "Created new opportunities" counts toward both <code>impact_share_improved_quality</code> and <code>impact_share_new_opportunities</code>.</p>
+
+<h2 id="five">5. Positive / negative / net impact</h2>
+<p>Two rolled-up shares are computed on the same impact denominator:</p>
+<pre><code>positive_impact_share = COUNT(is_positive AND in_impact_denom)
+                     / n_impact_denominator
+
+negative_impact_share = COUNT(is_negative AND in_impact_denom)
+                     / n_impact_denominator</code></pre>
+<p><code>is_positive</code> and <code>is_negative</code> are defined in §1.</p>
+
+<h3>Net Impact Index</h3>
+<pre><code>net_impact_index = positive_impact_share − negative_impact_share</code></pre>
+<p>Range <code>[−1, +1]</code>:</p>
+<ul>
+  <li><span class="pos">+1</span> means every respondent in the cell picked <strong>only</strong> positive impacts and <strong>no</strong> negative ones.</li>
+  <li><span class="neg">−1</span> means every respondent picked <strong>only</strong> negative impacts.</li>
+  <li><code>0</code> means equal positive and negative shares (this can happen by cancellation <em>or</em> because everyone answered "No impact" / "Not sure").</li>
+</ul>
+<p>A respondent who picks one positive <em>and</em> one negative contributes <code>+1</code> to both shares, so the net for that respondent's contribution is <code>0</code>. The index is a population-level summary, not a per-respondent score.</p>
+<blockquote><p>Note: <code>net_impact_index</code> is computed and stored, but no longer surfaced as a selectable map metric on the redesigned dashboard. It still drives the dose-response panel (§7).</p></blockquote>
+
+<h2 id="six">6. Weighted Impact Index</h2>
+<p>Tara's <strong>Weighted Impact Index</strong> (<code>weighted_impact_index</code>) is the dashboard's headline metric. Unlike the simple net index in §5, it assigns each impact flag a signed weight reflecting how positive or negative that outcome is, then averages a per-respondent score across the impact denominator.</p>
+
+<h3>Weights</h3>
+<table>
+  <thead><tr><th>Flag</th><th class="num">Weight</th></tr></thead>
+  <tbody>
+    <tr><td><code>impact_new_opportunities</code></td><td class="num pos">+1.00</td></tr>
+    <tr><td><code>impact_improved_quality</code></td><td class="num pos">+0.50</td></tr>
+    <tr><td><code>impact_job_anxiety</code></td><td class="num neg">−0.25</td></tr>
+    <tr><td><code>impact_adaptation_pressure</code></td><td class="num neg">−0.50</td></tr>
+    <tr><td><code>impact_reduced_income</code></td><td class="num neg">−0.75</td></tr>
+    <tr><td><code>impact_job_loss</code></td><td class="num neg">−1.00</td></tr>
+    <tr><td><code>impact_none</code>, <code>impact_other</code>, <code>impact_not_sure</code></td><td class="num">0</td></tr>
+  </tbody>
+</table>
+<p>These are editorial values set by the Sapien Labs team; they reflect judgment about relative severity, not an empirical calibration.</p>
+
+<h3>Per-respondent score</h3>
+<p>For each respondent in the impact denominator, sum the weights of every flag they selected:</p>
+<pre><code>score(respondent) = Σ over flags f { IMPACT_WEIGHTS[f]  if flag f is true }</code></pre>
+<p>Examples:</p>
+<ul>
+  <li>A respondent who selected only "Improved my work quality" scores <span class="pos">+0.5</span>.</li>
+  <li>A respondent who selected "Improved my work quality" <em>and</em> "Adaptation pressure" scores <code>+0.5 + (−0.5) = 0</code>.</li>
+  <li>A respondent who selected "Job loss" <em>and</em> "Reduced income" scores <span class="neg">−1.0 + (−0.75) = −1.75</span>.</li>
+  <li>A respondent who selected "No impact" scores <code>0</code>.</li>
+</ul>
+<p>A single respondent's score can exceed <code>±1</code> if they selected several weighted flags in the same direction.</p>
+
+<h3>Cell value</h3>
+<p>The published <code>weighted_impact_index</code> is the simple mean of these per-respondent scores over the impact denominator:</p>
+<pre><code>weighted_impact_index = MEAN over impact denominator of score(respondent)</code></pre>
+<p>Range is roughly <code>[−1, +1]</code> in practice but is <strong>not symmetric</strong>: a respondent would need to select multiple negative flags simultaneously to drive a cell well below <code>−1</code>.</p>
+<p>A positive cell value means the average AI user in that stratum had a net-positive experience; a negative value means the average user had a net-negative experience.</p>
+
+<h2 id="seven">7. Dose-response</h2>
+<p>The dashboard's "Dose-response" row shows the <strong>Net Impact Index by AI-use frequency level</strong>. For each stratum × month, and for each ordinal <code>ai_freq</code> level <code>k = 1…6</code>:</p>
+<pre><code>dose_response[k] = MEAN(is_positive | ai_freq_int = k)
+                − MEAN(is_negative | ai_freq_int = k)</code></pre>
+<p>The denominator is respondents in the impact denominator (§3) at that specific frequency level. If that level has fewer than <code>MIN_N</code> respondents (§9), the entry is <code>null</code> (rendered as <code>n/a</code> in the dashboard).</p>
+<p>Level 0 ("Never") is not part of the impact denominator and is not reported.</p>
+<p>Interpretation: a dose-response that climbs from <span class="pos">+0.10</span> at "Rarely" to <span class="pos">+0.40</span> at "Daily" suggests the net impact is more positive among heavier users — a hint of dose-dependence, not a causal claim.</p>
+
+<h2 id="eight">8. Confidence intervals</h2>
+
+<h3>Share metrics — Wilson 95% score interval</h3>
+<p>All share metrics (<code>adoption_rate</code>, every <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code>) get a Wilson score 95% CI. Given <code>k</code> successes out of <code>n</code> trials and <code>z = 1.96</code>:</p>
+<pre><code>p      = k / n
+denom  = 1 + z² / n
+center = (p + z² / (2n)) / denom
+half   = z · √( (p·(1−p) + z² / (4n)) / n ) / denom
+ci_low  = clip(center − half, 0, 1)
+ci_high = clip(center + half, 0, 1)</code></pre>
+<p>Wilson is preferred over the normal-approximation Wald interval because it stays inside <code>[0, 1]</code> even at extreme <code>p</code> and small <code>n</code>.</p>
+
+<h3><code>freq_mean</code> — standard-error 95% CI</h3>
+<pre><code>sem = stdev(ai_freq_int) / √n   (with ddof = 1)
+ci  = freq_mean ± 1.96 · sem</code></pre>
+
+<h3><code>weighted_impact_index</code> — standard-error 95% CI</h3>
+<p>The per-respondent score (§6) is treated as a continuous variable:</p>
+<pre><code>sem = stdev(score) / √n_impact_denominator   (with ddof = 1)
+ci  = weighted_impact_index ± 1.96 · sem</code></pre>
+<p>All CIs assume simple random sampling — they will be revised once survey weights are introduced.</p>
+
+<h2 id="nine">9. Minimum-N suppression</h2>
+<p>Any stratum × month cell with fewer than <strong><code>MIN_N</code> (default 50)</strong> respondents is flagged <code>suppressed = true</code> and its metric values are written as <code>null</code>. The dashboard does not display suppressed cells.</p>
+<p>The threshold applies at the <strong>finest</strong> stratum level. So if a country × gender × age cell has 41 respondents, that cell is suppressed, even if the corresponding country × gender (without age) cell has 600.</p>
+<p><code>MIN_N</code> is configurable per run via the <code>--min-n</code> flag to <code>main.py</code> / <code>tracker/main.py</code>. The active value is stored in <code>_meta.json</code> and embedded in the rendered HTML as the suppression threshold shown in the dashboard subtitle.</p>
+<p>The dashboard also applies a separate UI threshold: the Gender and Age band dropdowns only list categories that have at least one non-suppressed cell in <code>country_gender</code> / <code>country_age_band</code> — so options with no usable data anywhere are hidden.</p>
+
+<h2 id="ten">10. Stratification (country × gender × age)</h2>
+<p>Every metric is computed independently for each of these eight stratum levels:</p>
+<table>
+  <thead><tr><th>Level</th><th>Group-by columns (in addition to year, month)</th></tr></thead>
+  <tbody>
+    <tr><td><code>global</code></td><td>—</td></tr>
+    <tr><td><code>country</code></td><td><code>country_clean</code></td></tr>
+    <tr><td><code>gender</code></td><td><code>gender_clean</code></td></tr>
+    <tr><td><code>age_band</code></td><td><code>age_band</code></td></tr>
+    <tr><td><code>country_gender</code></td><td><code>country_clean</code>, <code>gender_clean</code></td></tr>
+    <tr><td><code>country_age_band</code></td><td><code>country_clean</code>, <code>age_band</code></td></tr>
+    <tr><td><code>gender_age_band</code></td><td><code>gender_clean</code>, <code>age_band</code></td></tr>
+    <tr><td><code>country_gender_age_band</code></td><td><code>country_clean</code>, <code>gender_clean</code>, <code>age_band</code></td></tr>
+  </tbody>
+</table>
+<p>The dashboard picks the finest level needed for the current filter combination so every displayed number is a <strong>precomputed cell value</strong>, not a JS-side aggregation:</p>
+<table>
+  <thead><tr><th>Filters</th><th>Level used</th></tr></thead>
+  <tbody>
+    <tr><td>no demographic filter</td><td><code>country</code></td></tr>
+    <tr><td>gender only</td><td><code>country_gender</code></td></tr>
+    <tr><td>age only</td><td><code>country_age_band</code></td></tr>
+    <tr><td>gender + age</td><td><code>country_gender_age_band</code></td></tr>
+  </tbody>
+</table>
+<p>This is also why removing a demographic filter doesn't just average the cells back together — the dashboard re-loads the coarser stratum.</p>
+
+<h2 id="eleven">11. Rolling-window pooling (Period filter)</h2>
+<p>The dashboard's <strong>Period</strong> selector — Single month / Last 3 / Last 6 / Last 12 — pools the precomputed monthly cells into a rolling window. Pooling is done in the browser on the embedded JSON and does not change the published Parquet output.</p>
+<p>For each (country × gender × age) cell across the window of months, fields are pooled with the following rules:</p>
+<table>
+  <thead><tr><th>Field</th><th>Aggregation</th><th>Weight</th></tr></thead>
+  <tbody>
+    <tr><td><code>n_respondents</code>, <code>n_impact_denominator</code></td><td>sum</td><td>—</td></tr>
+    <tr><td><code>adoption_rate</code>, <code>freq_mean</code></td><td>weighted mean</td><td><code>n_respondents</code></td></tr>
+    <tr><td><code>weighted_impact_index</code>, <code>net_impact_index</code>, all <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code></td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
+    <tr><td><code>dose_response[k]</code> (for k = 1…6)</td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
+  </tbody>
+</table>
+<p><strong>This is approximate.</strong> The exact pooled value would require re-running the metric layer on the pooled respondent-level data. The dashboard's weighted-mean of monthly aggregates is correct in expectation but ignores within-month variance and does not produce new confidence intervals.</p>
+<p>Cells suppressed in a given month (originally below <code>MIN_N</code>) are dropped before pooling, so a country can appear in the rolling window even if some of its constituent months were individually suppressed.</p>
+
+<h2 id="twelve">12. Summary card (dashboard)</h2>
+<p>The top-right summary card on the dashboard is a fixed reference and is <strong>not</strong> affected by Month, Period, Country, Gender, or Age filters.</p>
+<p>It always shows:</p>
+<ol>
+  <li>The global weighted average of the currently-selected metric over the trailing 3 <strong>full</strong> months.</li>
+  <li>The total respondents over those 3 months.</li>
+  <li>The total respondents across the entire dataset to date.</li>
+</ol>
+<p>"Full" means non-partial. The dashboard detects the latest partial month by comparing each month's total respondents against the median of prior months — any month with respondents below <code>60% × median</code> is considered still in-flight and excluded from the trailing-3 window. This is the same rule used to mark the partial point in the trend chart.</p>
+<p>Only the <strong>metric</strong> dropdown updates this card; switching metric swaps the displayed label and value but does not change the underlying 3-month window.</p>
+
+<h2 id="thirteen">13. Known limitations</h2>
+<p>These are explicit Phase-1 scope boundaries — they apply to every metric above.</p>
+<ul>
+  <li><strong>No survey weights</strong> are applied. All respondents are treated as an equal-weighted sample. The published values reflect the raw respondent mix in each cell, not a population-representative estimate.</li>
+  <li><strong>Self-selection bias is not adjusted.</strong> Associations between <code>ai_freq</code> and impact (including dose-response) are descriptive, not causal.</li>
+  <li><strong>Composition effects are not decomposed.</strong> Month-over-month changes can reflect a change in respondent mix rather than a genuine attitude shift.</li>
+  <li><strong>CIs assume simple random sampling.</strong> They will be revised once weighting is introduced.</li>
+  <li><strong><code>IMPACT_WEIGHTS</code> (§6) are editorial.</strong> They encode Sapien Labs' judgment about relative severity of each outcome, not an empirical calibration. Changing the weights will shift every published <code>weighted_impact_index</code> value.</li>
+</ul>
+<p>Phase 2 will add survey weighting and compositional adjustment.</p>
+
+<footer>AI Impact Tracker · Sapien Labs · Global Mind Project</footer>
+</div>
+</body>
+</html>
