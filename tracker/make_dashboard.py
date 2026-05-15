@@ -280,7 +280,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
         <div class="help-dropdown" id="help-dropdown" role="menu">
           <a href="/docs/DASHBOARD_SIMPLE.html" target="_blank" rel="noopener">User guide</a>
           <a href="/docs/METRICS.html" target="_blank" rel="noopener">Methodology</a>
-          <a href="/docs/DASHBOARD_SIMPLE.html#eight" target="_blank" rel="noopener">Metric reference</a>
+          <a href="/docs/METRICS.html#four" target="_blank" rel="noopener">Metric reference</a>
           <a href="/docs/COLUMNS.html" target="_blank" rel="noopener">Data columns</a>
         </div>
       </div>
