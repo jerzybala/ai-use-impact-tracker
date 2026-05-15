@@ -786,24 +786,64 @@ const fmtMetric = (v, meta) => {
 const TOTAL_RESPONDENTS_TO_DATE = DATA.global.reduce(
   (s, r) => s + (r.n_respondents || 0), 0);
 
-// Top-right summary card — global weighted average of the active metric over
-// the selected period, plus respondents in period and total respondents to date.
+// Find the latest "full" month from DATA.global by comparing each month's
+// total n_respondents against the median of prior months. Same partial-
+// detection rule used for the time-series chart, but global-respondents-
+// based so it's independent of the active metric.
+function findLatestFullMonthIdx() {
+  const monthN = {};
+  for (const r of DATA.global) {
+    const k = `${r.year}-${String(r.month).padStart(2,"0")}`;
+    monthN[k] = (monthN[k] || 0) + (r.n_respondents || 0);
+  }
+  const ns = months.map(m => monthN[m] || 0);
+  if (ns.length === 0) return -1;
+  if (ns.length < 4) return ns.length - 1;
+  const prior = ns.slice(0, -1).filter(v => v > 0);
+  if (prior.length < 3) return ns.length - 1;
+  const sorted = [...prior].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)];
+  for (let i = ns.length - 1; i >= 0; i--) {
+    if (median > 0 && ns[i] < 0.6 * median) continue;
+    return i;
+  }
+  return ns.length - 1;
+}
+
+// Fixed 3-month window for the summary card — always the trailing 3 full
+// months. Computed once at startup; not affected by Month / Period / Country
+// / Gender / Age filters.
+const SUMMARY_LATEST_IDX = findLatestFullMonthIdx();
+const SUMMARY_MONTHS = SUMMARY_LATEST_IDX < 0
+  ? []
+  : months.slice(Math.max(0, SUMMARY_LATEST_IDX - 2), SUMMARY_LATEST_IDX + 1);
+const SUMMARY_MONTH_SET = new Set(SUMMARY_MONTHS);
+const SUMMARY_ROWS = DATA.global.filter(r =>
+  SUMMARY_MONTH_SET.has(`${r.year}-${String(r.month).padStart(2,"0")}`));
+const SUMMARY_TOTAL_N = SUMMARY_ROWS.reduce((s, r) => s + (r.n_respondents || 0), 0);
+const SUMMARY_RANGE_TEXT = (() => {
+  if (!SUMMARY_MONTHS.length) return "";
+  const fmt = ym => {
+    const [y, m] = ym.split("-").map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString("en", {month: "short", year: "2-digit"});
+  };
+  return `${fmt(SUMMARY_MONTHS[0])} – ${fmt(SUMMARY_MONTHS[SUMMARY_MONTHS.length - 1])}`;
+})();
+
+// Top-right summary card — fixed Global · last 3 full months reference.
+// Only the displayed metric label/value updates with the metric dropdown;
+// all other filters are intentionally ignored.
 function renderSummary() {
-  const rows = currentRows();
   const meta = activeMetricMeta();
-  const totalN = rows.reduce((s, r) => s + (r.n_respondents || 0), 0);
-  const weightField = meta.isShare ? "n_impact_denominator"
-                                   : (metricSel.value === "adoption_rate" ? "n_respondents"
-                                                                          : "n_impact_denominator");
+  const weightField = metricSel.value === "adoption_rate" ? "n_respondents" : "n_impact_denominator";
   let num = 0, den = 0;
-  for (const r of rows) {
+  for (const r of SUMMARY_ROWS) {
     const v = r[metricSel.value], w = r[weightField] || 0;
     if (v != null && w > 0) { num += v * w; den += w; }
   }
   const avg = den > 0 ? num / den : null;
 
-  const head = `Global · ${periodLabel()}`;
-  $("summary-head").textContent = head;
+  $("summary-head").textContent = "Global · Last 3 months";
 
   $("summary-metric-lbl").textContent = meta.label;
   const valEl = $("summary-metric-val");
@@ -812,8 +852,8 @@ function renderSummary() {
   if (meta.signed && avg != null && avg > 0) valEl.classList.add("pos");
   if (meta.signed && avg != null && avg < 0) valEl.classList.add("neg");
 
-  $("summary-n").textContent = fmtNum(totalN);
-  $("summary-period").textContent = filterSummary();
+  $("summary-n").textContent = fmtNum(SUMMARY_TOTAL_N);
+  $("summary-period").textContent = SUMMARY_RANGE_TEXT;
   $("summary-total-n").textContent = fmtNum(TOTAL_RESPONDENTS_TO_DATE);
 }
 
