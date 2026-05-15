@@ -210,6 +210,7 @@ UPLOAD_PAGE = r"""
   <footer>
     <div>Data from the <a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Global Mind Project</a></div>
     <div class="sub">A research initiative by <a href="https://sapienlabs.org/" target="_blank" rel="noopener">Sapien Labs</a></div>
+    <div class="sub"><a href="https://sapienlabs.org/global-mind-project/" target="_blank" rel="noopener">Access the GMP dataset →</a></div>
   </footer>
 </div>
 <script>
