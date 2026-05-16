@@ -39,6 +39,7 @@ KEEP_COLS_BASE = [
     "n_respondents", "n_impact_denominator",
     "adoption_rate", "freq_mean",
     "weighted_impact_index", "net_impact_index",
+    "weighted_impact_index_ci_low", "weighted_impact_index_ci_high",
     "positive_impact_share", "negative_impact_share",
     "impact_share_improved_quality", "impact_share_new_opportunities",
     "impact_share_adaptation_pressure", "impact_share_job_anxiety",
