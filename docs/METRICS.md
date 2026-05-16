@@ -52,9 +52,9 @@ Mapped from the raw `ai_freq` text answer:
 
 ### `is_user` — does this respondent use AI at all?
 
-```
-is_user = (ai_freq_int >= 1)
-```
+$$
+\texttt{is\_user} = \mathbb{1}\!\left[\,\texttt{ai\_freq\_int} \geq 1\,\right]
+$$
 
 A respondent at level 0 ("Never") is **not** an AI user.
 
@@ -79,13 +79,13 @@ columns; each respondent can have multiple flags set true.
 Two derived boolean columns roll the flags into a positive / negative
 direction:
 
-```
-is_positive = impact_improved_quality OR impact_new_opportunities
-is_negative = impact_adaptation_pressure
-            OR impact_job_anxiety
-            OR impact_job_loss
-            OR impact_reduced_income
-```
+$$
+\texttt{is\_positive} = \texttt{impact\_improved\_quality} \;\lor\; \texttt{impact\_new\_opportunities}
+$$
+
+$$
+\texttt{is\_negative} = \texttt{impact\_adaptation\_pressure} \;\lor\; \texttt{impact\_job\_anxiety} \;\lor\; \texttt{impact\_job\_loss} \;\lor\; \texttt{impact\_reduced\_income}
+$$
 
 `impact_none`, `impact_other`, `impact_not_sure`, and `impact_na` are
 treated as neither positive nor negative.
@@ -100,43 +100,43 @@ These are reported for **every stratum × month**.
 
 Plain count of respondents in the cell.
 
-```
-n_respondents = COUNT(rows in stratum × month)
-```
+$$
+N = \bigl|\{i : i \in \text{stratum} \times \text{month}\}\bigr|
+$$
 
 This is also the denominator for `adoption_rate` and `freq_mean`.
 
 ### `adoption_rate` — share who use AI at all
 
-```
-adoption_rate = COUNT(is_user = true) / n_respondents
-```
+$$
+\texttt{adoption\_rate} = \frac{\sum_{i=1}^{N} \mathbb{1}[\texttt{is\_user}_i]}{N}
+$$
 
-Range `[0, 1]`. Includes respondents at every `ai_freq` level from
+Range $[0, 1]$. Includes respondents at every `ai_freq` level from
 "Rarely" upward.
 
 ### `freq_mean` — mean AI-use frequency on the 0–6 scale
 
-```
-freq_mean = MEAN(ai_freq_int)
-```
+$$
+\texttt{freq\_mean} = \frac{1}{N'} \sum_{i=1}^{N'} \texttt{ai\_freq\_int}_i
+$$
 
-over the rows in the cell that have a non-null `ai_freq_int`. Range
-`[0, 6]`. A `freq_mean` of `2.08` means roughly "monthly use" on
-average; `4.0` means "daily" on average.
+where $N'$ is the count of rows with non-null `ai_freq_int`. Range
+$[0, 6]$. A `freq_mean` of $2.08$ means roughly "monthly use" on
+average; $4.0$ means "daily" on average.
 
 > Note: `freq_mean` is computed and stored, but no longer surfaced as a
 > selectable map metric on the redesigned dashboard.
 
 ### `freq_share_0` … `freq_share_6` — distribution
 
-For each ordinal level `k = 0…6`:
+For each ordinal level $k = 0, \ldots, 6$:
 
-```
-freq_share_k = COUNT(ai_freq_int = k) / COUNT(ai_freq_int is not null)
-```
+$$
+\texttt{freq\_share}_k = \frac{\sum_{i=1}^{N'} \mathbb{1}[\texttt{ai\_freq\_int}_i = k]}{N'}
+$$
 
-The seven shares sum to `1`.
+The seven shares sum to $1$.
 
 ---
 
@@ -146,24 +146,18 @@ The impact metrics in §4–§6 do **not** use `n_respondents` as their
 denominator. They use a stricter base population, the
 **impact denominator**:
 
-```
-in_impact_denom = is_user AND has_impact_response
-```
+$$
+\texttt{in\_impact\_denom}_i = \texttt{is\_user}_i \;\land\; \texttt{has\_impact\_response}_i
+$$
 
 where `has_impact_response` means at least one of the eight real
 impact flags is true (all flags except `impact_na`):
 
-```
-has_impact_response = impact_improved_quality
-                   OR impact_new_opportunities
-                   OR impact_adaptation_pressure
-                   OR impact_job_anxiety
-                   OR impact_job_loss
-                   OR impact_reduced_income
-                   OR impact_none
-                   OR impact_other
-                   OR impact_not_sure
-```
+$$
+\texttt{has\_impact\_response} = \bigvee_{f \,\in\, \mathcal{F} \setminus \{\texttt{impact\_na}\}} \texttt{flag}_f
+$$
+
+i.e. the disjunction over `impact_improved_quality`, `impact_new_opportunities`, `impact_adaptation_pressure`, `impact_job_anxiety`, `impact_job_loss`, `impact_reduced_income`, `impact_none`, `impact_other`, and `impact_not_sure`.
 
 So the impact denominator is reported as `n_impact_denominator` and
 equals the count of respondents who:
@@ -183,12 +177,13 @@ response".
 ## 4. Impact share metrics
 
 For each impact flag listed in §1, the share is computed against the
-impact denominator:
+impact denominator. Let $N_d$ denote `n_impact_denominator`:
 
-```
-impact_share_{flag} = COUNT(flag = true AND in_impact_denom)
-                    / n_impact_denominator
-```
+$$
+\texttt{impact\_share}_f = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{flag}_{f,i}]}{N_d}
+$$
+
+where $\mathcal{D}$ is the set of respondents in the impact denominator.
 
 The metrics published are:
 
@@ -218,23 +213,23 @@ shares. A respondent who picked "Improved my work quality" *and*
 
 Two rolled-up shares are computed on the same impact denominator:
 
-```
-positive_impact_share = COUNT(is_positive AND in_impact_denom)
-                      / n_impact_denominator
+$$
+\texttt{positive\_impact\_share} = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{is\_positive}_i]}{N_d}
+$$
 
-negative_impact_share = COUNT(is_negative AND in_impact_denom)
-                      / n_impact_denominator
-```
+$$
+\texttt{negative\_impact\_share} = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{is\_negative}_i]}{N_d}
+$$
 
-`is_positive` and `is_negative` are defined in §1.
+where `is_positive` and `is_negative` are defined in §1.
 
 The **Net Impact Index** is the difference:
 
-```
-net_impact_index = positive_impact_share − negative_impact_share
-```
+$$
+\texttt{NII} = \texttt{positive\_impact\_share} - \texttt{negative\_impact\_share}
+$$
 
-Range `[−1, +1]`:
+Range $[-1, +1]$:
 
 - `+1` means every respondent in the cell picked **only** positive
   impacts and **no** negative ones.
@@ -278,12 +273,14 @@ judgment about relative severity, not an empirical calibration.
 
 ### Per-respondent score
 
-For each respondent in the impact denominator, sum the weights of
+For each respondent $i$ in the impact denominator, sum the weights of
 every flag they selected:
 
-```
-score(respondent) = Σ over flags f { IMPACT_WEIGHTS[f]  if flag f is true }
-```
+$$
+s_i = \sum_{f \in \mathcal{F}} w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]
+$$
+
+where $w_f = \texttt{IMPACT\_WEIGHTS}[f]$ and $\mathcal{F}$ is the set of eight weighted flags (excluding `impact_na`).
 
 Examples:
 
@@ -300,16 +297,16 @@ weighted flags in the same direction.
 
 ### Cell value
 
-The published `weighted_impact_index` is the simple mean of these
+The published `weighted_impact_index` is the arithmetic mean of these
 per-respondent scores over the impact denominator:
 
-```
-weighted_impact_index = MEAN over impact denominator of score(respondent)
-```
+$$
+\texttt{WII} = \frac{1}{N_d} \sum_{i \in \mathcal{D}} s_i
+$$
 
-Range is roughly `[−1, +1]` in practice but is **not symmetric**: a
+Range is roughly $[-1, +1]$ in practice but is **not symmetric**: a
 respondent would need to select multiple negative flags simultaneously
-to drive a cell well below `−1`.
+to drive a cell well below $-1$.
 
 A positive cell value means the average AI user in that stratum had a
 net-positive experience; a negative value means the average user had
@@ -321,12 +318,13 @@ a net-negative experience.
 
 The dashboard's "Dose-response" row shows the **Net Impact Index by
 AI-use frequency level**. For each stratum × month, and for each
-ordinal `ai_freq` level `k = 1…6`:
+ordinal `ai_freq` level $k = 1, \ldots, 6$:
 
-```
-dose_response[k] = MEAN(is_positive | ai_freq_int = k)
-                 − MEAN(is_negative | ai_freq_int = k)
-```
+$$
+\texttt{dose\_response}[k] = \frac{\sum_{i \in \mathcal{D}_k} \mathbb{1}[\texttt{is\_positive}_i]}{|\mathcal{D}_k|} \;-\; \frac{\sum_{i \in \mathcal{D}_k} \mathbb{1}[\texttt{is\_negative}_i]}{|\mathcal{D}_k|}
+$$
+
+where $\mathcal{D}_k = \{i \in \mathcal{D} : \texttt{ai\_freq\_int}_i = k\}$.
 
 The denominator is respondents in the impact denominator (§3) at that
 specific frequency level. If that level has fewer than `MIN_N`
@@ -348,35 +346,51 @@ heavier users — a hint of dose-dependence, not a causal claim.
 
 All share metrics (`adoption_rate`, every `impact_share_*`,
 `positive_impact_share`, `negative_impact_share`) get a Wilson score
-95% CI. Given `k` successes out of `n` trials and `z = 1.96`:
+95% CI. Given $k$ successes out of $n$ trials and $z = 1.96$:
 
-```
-p      = k / n
-denom  = 1 + z² / n
-center = (p + z² / (2n)) / denom
-half   = z · √( (p·(1−p) + z² / (4n)) / n ) / denom
-ci_low  = clip(center − half, 0, 1)
-ci_high = clip(center + half, 0, 1)
-```
+$$
+\hat{p} = \frac{k}{n}
+$$
+
+$$
+\tilde{p} = \frac{\hat{p} + \dfrac{z^2}{2n}}{1 + \dfrac{z^2}{n}}
+$$
+
+$$
+\texttt{CI} = \tilde{p} \;\pm\; \frac{z \;\sqrt{\dfrac{\hat{p}(1-\hat{p}) + \dfrac{z^2}{4n}}{n}}}{1 + \dfrac{z^2}{n}}
+$$
+
+$$
+\texttt{ci\_low} = \max(0,\;\texttt{CI}_\text{low}), \quad \texttt{ci\_high} = \min(1,\;\texttt{CI}_\text{high})
+$$
 
 Wilson is preferred over the normal-approximation Wald interval
-because it stays inside `[0, 1]` even at extreme `p` and small `n`.
+because it stays inside $[0, 1]$ even at extreme $\hat{p}$ and small $n$.
 
-### `freq_mean` — standard-error 95% CI
+### `freq_mean` — Wald 95% CI
 
-```
-sem = stdev(ai_freq_int) / √n   (with ddof = 1)
-ci  = freq_mean ± 1.96 · sem
-```
+$$
+\texttt{SE} = \frac{\sigma}{\sqrt{N'}} \quad (\text{with } \texttt{ddof}=1)
+$$
 
-### `weighted_impact_index` — standard-error 95% CI
+$$
+\texttt{CI} = \texttt{freq\_mean} \;\pm\; 1.96 \times \texttt{SE}
+$$
 
-The per-respondent score (§6) is treated as a continuous variable:
+### `weighted_impact_index` — Wald 95% CI
 
-```
-sem = stdev(score) / √n_impact_denominator   (with ddof = 1)
-ci  = weighted_impact_index ± 1.96 · sem
-```
+The per-respondent score $s_i$ (§6) is treated as a continuous variable:
+
+$$
+\texttt{SE} = \frac{\sigma_s}{\sqrt{N_d}} \quad (\text{with } \texttt{ddof}=1)
+$$
+
+$$
+\texttt{CI} = \texttt{WII} \;\pm\; 1.96 \times \texttt{SE}
+$$
+
+where $\sigma_s$ is the sample standard deviation of the per-respondent
+scores and $N_d$ is the impact denominator size.
 
 All CIs assume simple random sampling — they will be revised once
 survey weights are introduced.
@@ -494,24 +508,93 @@ swaps the displayed label and value but does not change the underlying
 
 ## 13. Known limitations
 
-These are explicit Phase-1 scope boundaries — they apply to every
-metric above.
+These limitations apply to every metric above.
 
-- **No survey weights** are applied. All respondents are treated as an
-  equal-weighted sample. The published values reflect the raw
-  respondent mix in each cell, not a population-representative
-  estimate.
-- **Self-selection bias is not adjusted.** Associations between
-  `ai_freq` and impact (including dose-response) are descriptive, not
-  causal.
-- **Composition effects are not decomposed.** Month-over-month
-  changes can reflect a change in respondent mix rather than a
-  genuine attitude shift.
-- **CIs assume simple random sampling.** They will be revised once
-  weighting is introduced.
-- **`IMPACT_WEIGHTS` (§6) are editorial.** They encode Sapien Labs'
-  judgment about relative severity of each outcome, not an empirical
-  calibration. Changing the weights will shift every published
-  `weighted_impact_index` value.
+### 13.1 No survey weights (non-probability sample)
 
-Phase 2 will add survey weighting and compositional adjustment.
+The GMP respondent pool is a convenience sample recruited via online
+ads (Google Display, Meta, and organic search). It carries no
+post-stratification or design weights. Demographic proportions in the
+data do not match national population proportions — countries, age
+groups, and genders are represented according to who encounters and
+completes the survey, not according to census benchmarks.
+
+All metrics are descriptive statistics of the responding population,
+not population-level estimates. Associations between `ai_freq` and
+impact outcomes are correlational; higher-frequency AI users who
+report better outcomes may differ systematically from lower-frequency
+users in education, occupation, digital literacy, or other unmeasured
+confounders. No causal claims are supported.
+
+*Planned mitigation:* Demographic-weighted averaging using UN World
+Population Prospects age–sex distributions is on the roadmap. This
+would rebalance age and gender composition within each country but
+would not address self-selection or unmeasured confounders.
+
+### 13.2 Composition effects in time-series
+
+Month-over-month changes may reflect shifts in who is responding
+rather than genuine attitudinal change. If a recruitment campaign
+increases responses from a younger demographic in one month, and
+younger respondents tend to report more positive AI impacts, the
+global WII will rise even if no individual changed their view.
+Country mix changes and seasonal patterns in survey completion can
+similarly shift metrics.
+
+The stratified breakdowns (by country, gender, age) partially
+mitigate this by holding one dimension constant, but
+cross-dimensional composition effects remain. Rolling-window views
+help smooth short-term fluctuations.
+
+### 13.3 Weight selection
+
+The nine `IMPACT_WEIGHTS` (§6) were chosen by stakeholder judgment,
+not derived from empirical data. Different weight schemes would
+produce different index values and could alter relative country
+rankings. Sensitivity analysis (varying weights within a plausible
+range) has not yet been conducted. The asymmetric design — total
+negative weight (−2.5) exceeding total positive weight (+1.5) — is
+intentional but should be disclosed when comparing WII values across
+studies.
+
+### 13.4 Rolling-window approximation
+
+Rolling-window pooling (§11) uses total `n_respondents` as approximate
+weights. The exact calculation would re-aggregate from individual-level
+data within the pooled window. The approximation introduces minor
+error (±1 percentage point within 3–6 month windows) because the
+impact denominator differs slightly from total N. This trade-off is
+accepted for client-side performance.
+
+### 13.5 Dose-response uses NII, not WII
+
+The dose-response curves (§7) show the Net Impact Index by frequency
+level, not the Weighted Impact Index. Adding weighted dose-response
+is a planned enhancement.
+
+### 13.6 Data source filtering not yet implemented
+
+Per Tara's specification, the production version should restrict the
+respondent pool to Google Display and Meta traffic sources and
+down-weight organic/search traffic to 10%. This is not yet
+implemented; the current pipeline processes all traffic sources
+equally.
+
+### 13.7 Multi-select interaction effects
+
+The WII treats each flag independently — a respondent selecting both
+"improved quality" (+0.5) and "job anxiety" (−0.25) receives the sum
+(+0.25). This additive model does not capture potential interactions
+between simultaneous positive and negative experiences.
+
+### 13.8 Suppression and small-cell noise
+
+Strata with fewer than 50 respondents (`MIN_N`) are suppressed
+entirely. For strata just above the threshold (e.g., N = 55),
+confidence intervals are wide and point estimates can shift
+substantially with small data changes.
+
+### 13.9 CIs assume simple random sampling
+
+Confidence intervals will be revised once survey weights are
+introduced.

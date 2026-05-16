@@ -105,6 +105,7 @@ HTML_TEMPLATE_V2 = r"""<!DOCTYPE html>
   .card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
   .card.hero { border: 2px solid var(--wii); }
   .card.hero .value { color: var(--wii); font-size: 34px; }
+  .card.hero .sub { font-size: 13px; color: #555; font-weight: 500; }
   .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .panel { background: #fff; padding: 18px; border-radius: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.06); margin-bottom: 20px; }
   .panel h3 { margin: 0 0 12px; font-size: 15px; color: #333; font-weight: 600; }
@@ -161,7 +162,7 @@ HTML_TEMPLATE_V2 = r"""<!DOCTYPE html>
   <button id="month-prev" class="month-nav" aria-label="Previous month" title="Previous month">&#9664;</button>
   <select id="month-selector" aria-label="Select month"></select>
   <button id="month-next" class="month-nav" aria-label="Next month" title="Next month">&#9654;</button>
-  <span class="hint">Single-month views update with the selection; the shaded band on the time-series marks the selected period. Rolling-window options pool months using n_respondents as weights (approximate).</span>
+  <span class="hint">Single-month: a dashed vertical line marks the selected month on time-series charts. Rolling-window (Last 3/6 mo): a shaded band highlights the pooled months; KPIs and breakdowns show weighted averages.</span>
 </div>
 
 <div id="tab-overview" class="tab-content active">
@@ -668,7 +669,10 @@ function render() {
       : (selected.weighted_impact_index >= 0 ? "var(--pos)" : "var(--neg)");
     const ciEl = document.getElementById("kpi-wii-ci");
     if (selected.weighted_impact_index_ci_low != null) {
-      ciEl.textContent = `95% CI: [${selected.weighted_impact_index_ci_low.toFixed(3)}, ${selected.weighted_impact_index_ci_high.toFixed(3)}]`;
+      const lo = selected.weighted_impact_index_ci_low.toFixed(3);
+      const hi = selected.weighted_impact_index_ci_high.toFixed(3);
+      const margin = ((selected.weighted_impact_index_ci_high - selected.weighted_impact_index_ci_low) / 2).toFixed(3);
+      ciEl.textContent = `95% CI: [${lo}, ${hi}]  (±${margin})`;
     } else {
       ciEl.textContent = detailLabel;
     }

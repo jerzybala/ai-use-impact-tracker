@@ -1,95 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>AI Use Impact Tracker — README + Metric Specification</title>
-<style>
-  :root {
-    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
-    --rule:#e5e7eb; --chip:#E8EEF4; --code-bg:#0f172a; --code-ink:#e2e8f0;
-    --pos:#1a7f4e; --neg:#b3261e;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin:0; background:#f6f7f9; font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; color:var(--ink); line-height:1.6; }
-  .shell { max-width:920px; margin:0 auto; padding:48px 44px 80px; background:#fff; min-height:100vh; box-shadow:0 1px 2px rgba(0,0,0,0.06); }
-  header { padding-bottom:18px; border-bottom:1px solid var(--rule); margin-bottom:28px; }
-  h1 { color:var(--accent); margin:0 0 6px; font-size:30px; }
-  .meta { color:var(--muted); font-size:13px; margin:0 0 12px; }
-  .lede { color:var(--muted); margin:0 0 8px; font-size:15px; }
-  h1.spec { font-size:24px; margin-top:48px; padding-top:20px; border-top:2px solid var(--accent); }
-  h2 { color:var(--accent); font-size:20px; margin:32px 0 10px; padding-top:8px; border-top:1px solid var(--rule); }
-  h2:first-of-type { border-top:none; padding-top:0; }
-  h3 { color:var(--accent2); font-size:16px; margin:20px 0 6px; }
-  h4 { color:var(--accent2); font-size:14px; margin:16px 0 6px; }
-  p { margin:0 0 12px; }
-  a { color:var(--accent2); }
-  ul { margin:0 0 12px; padding-left:22px; }
-  li { margin-bottom:6px; }
-  code { background:var(--chip); padding:1px 6px; border-radius:4px; font-family:"SF Mono", Menlo, Consolas, monospace; font-size:13px; color:var(--accent); }
-  pre { background:var(--code-bg); color:var(--code-ink); padding:14px 18px; border-radius:8px; overflow-x:auto; font-size:13px; line-height:1.55; }
-  pre code { background:transparent; color:inherit; padding:0; }
-  strong { color:var(--accent); }
-  table { border-collapse:collapse; width:100%; margin:0 0 16px; font-size:13px; }
-  th, td { border-bottom:1px solid var(--rule); padding:8px 10px; text-align:left; vertical-align:top; }
-  th { background:var(--chip); color:var(--accent); font-weight:600; white-space:nowrap; }
-  td.right { text-align:right; }
-  .pos { color:var(--pos); font-weight:600; }
-  .neg { color:var(--neg); font-weight:600; }
-  .nav { font-size:13px; color:var(--muted); margin-bottom:24px; line-height:1.9; }
-  .nav a { color:var(--accent2); margin-right:14px; text-decoration:none; }
-  .nav a:hover { text-decoration:underline; }
-  .nav .group { display:block; }
-  .nav .group strong { color:var(--accent); margin-right:8px; }
-  .note { background:#fbfcfd; border-left:3px solid var(--accent2); padding:10px 14px; border-radius:0 6px 6px 0; font-size:13px; color:var(--muted); margin:12px 0; }
-  .note strong { color:var(--accent); }
-  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule); font-size:12px; color:var(--muted); }
-</style>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>AI Use Impact Tracker</title>
+  <style>
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    span.underline{text-decoration: underline;}
+    div.column{display: inline-block; vertical-align: top; width: 50%;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    ul.task-list{list-style: none;}
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <script src="/usr/share/javascript/mathjax/tex-mml-chtml.js" type="text/javascript"></script>
 </head>
 <body>
-<div class="shell">
-  <header>
-    <h1>AI Use Impact Tracker</h1>
-    <p class="meta"><strong>Version:</strong> 0.2 · <strong>Owner:</strong> Jerzy Bala, Chief Data Scientist, Sapien Labs</p>
-    <p class="lede">ETL pipeline that converts a Global Mind Project (GMP) data extract into a versioned Parquet metric layer, plus a single-page HTML dashboard baker for a self-contained world-map view of AI use and its self-reported impact on work.</p>
-    <p class="lede">This file is both the <strong>operator's guide</strong> (how to run, layout, deployment) and the <strong>metric specification</strong> (the authoritative contract between ETL, metric layer, and dashboard). Any change to a metric definition requires a version bump and a rebuild of the Parquet outputs.</p>
-  </header>
-
-  <div class="nav">
-    <div class="group"><strong>Operator guide</strong>
-      <a href="#quick-start">Quick start</a>
-      <a href="#architecture">Architecture</a>
-      <a href="#running">Running</a>
-      <a href="#dashboard">Dashboard</a>
-      <a href="#metric-reference">Metric reference</a>
-    </div>
-    <div class="group"><strong>Metric spec</strong>
-      <a href="#sec1">§1 Purpose</a>
-      <a href="#sec2">§2 Grain</a>
-      <a href="#sec3">§3 Inputs</a>
-      <a href="#sec4">§4 Normalisation</a>
-      <a href="#sec5">§5 Metrics</a>
-      <a href="#sec6">§6 Suppression</a>
-      <a href="#sec7">§7 Output schema</a>
-      <a href="#sec8">§8 Known limitations</a>
-      <a href="#sec9">§9 Rolling-window pooling</a>
-    </div>
-    <div class="group">
-      <a href="#downstream">Downstream</a>
-      <a href="#changelog">Changelog</a>
-    </div>
-  </div>
-
-  <h2 id="quick-start">Quick start</h2>
-<pre><code>pip install -r requirements.txt
-
-python main.py --source csv --path "../SAMPLE DATA.xlsx" --out ./output
-python make_dashboard.py
-open ../dashboard/preview.html</code></pre>
-
-  <h2 id="architecture">Architecture</h2>
+<header id="title-block-header">
+<h1 class="title">AI Use Impact Tracker</h1>
+</header>
+<h1 id="ai-use-impact-tracker">AI Use Impact Tracker</h1>
+<p><strong>Version:</strong> 0.3 · <strong>Owner:</strong> Jerzy Bala, Chief Data Scientist, Sapien Labs</p>
+<p>ETL pipeline that converts a Global Mind Project (GMP) data extract into a versioned Parquet metric layer, plus a single-page HTML dashboard baker for a self-contained world-map view of AI use and its self-reported impact on work.</p>
+<p>This file is both the <strong>operator’s guide</strong> (how to run, layout, deployment) and the <strong>metric specification</strong> (the authoritative contract between ETL, metric layer, and dashboard). Any change to a metric definition requires a version bump and a rebuild of the Parquet outputs.</p>
+<hr />
+<h2 id="contents">Contents</h2>
+<ul>
+<li><a href="#quick-start">Quick start</a></li>
+<li><a href="#architecture">Architecture</a></li>
+<li><a href="#running-modes">Running modes</a> — local · container · Lambda</li>
+<li><a href="#dashboard">Dashboard</a> — bake · features</li>
+<li><a href="#dashboard-metric-reference">Dashboard metric reference</a></li>
+<li><a href="#metric-specification">Metric specification</a> — §1 Purpose · §2 Grain · §3 Inputs · §4 Normalisation · §5 Metrics · §6 Suppression · §7 Output schema · §8 Known limitations · §9 Rolling-window pooling</li>
+<li><a href="#downstream-consumer">Downstream consumer</a></li>
+<li><a href="#changelog">Changelog</a></li>
+</ul>
+<hr />
+<h2 id="quick-start">Quick start</h2>
+<div class="sourceCode" id="cb1"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="ex">pip</span> install -r requirements.txt</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a><span class="ex">python</span> main.py --source csv --path <span class="st">&quot;../SAMPLE DATA.xlsx&quot;</span> --out ./output</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a><span class="ex">python</span> make_dashboard.py</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a><span class="ex">open</span> ../dashboard/preview.html</span></code></pre></div>
+<hr />
+<h2 id="architecture">Architecture</h2>
 <pre><code>tracker/
-├── README.md / README.html  This file (operator guide + metric spec)
+├── README.md               This file (operator guide + metric spec)
 ├── main.py                 ETL entry — CLI, Docker, and Lambda all call run()
 ├── lambda_handler.py       AWS Lambda wrapper
 ├── make_dashboard.py       Bakes ../dashboard/preview.html (single-page world map)
@@ -105,270 +123,539 @@ open ../dashboard/preview.html</code></pre>
     │   └── metrics.py              Implements §5–§6
     └── publish/
         └── parquet_writer.py       Implements §7 output contract</code></pre>
-  <p><code>make_preview.py</code> and <code>make_preview_v2.py</code> are the previous v1/v2 bakers; superseded by <code>make_dashboard.py</code>.</p>
-
-  <h3>Design principle</h3>
-  <p>Only <code>src/sources/</code> knows where data comes from. Everything downstream operates on a DataFrame. To migrate CSV → Elasticsearch, swap one config line in <code>main.py</code>; the normaliser, metric layer, and publisher are unchanged.</p>
-
-  <h2 id="running">Running modes</h2>
-
-  <h3>Local</h3>
-<pre><code>python main.py \
-  --source csv \
-  --path "../SAMPLE DATA.xlsx" \
-  --out ./output</code></pre>
-  <p>Outputs land at <code>output/v1/metrics/stratum_level=.../year=YYYY/month=MM/part-0.parquet</code>.</p>
-
-  <h3>Container (Railway / ECS)</h3>
-<pre><code>docker build -t ai-use-tracker .
-docker run --rm -v $(pwd)/data:/data ai-use-tracker</code></pre>
-  <p>Mount the input CSV and output directory into <code>/data</code>.</p>
-
-  <h3>Lambda</h3>
-  <p>Package <code>main.py</code> + <code>lambda_handler.py</code> + <code>src/</code> as a Lambda layer or container image. Invoke with payload matching the <code>run()</code> config dict:</p>
-<pre><code>{
-  "source": "csv",
-  "source_config": {"path": "s3://sapien-gmp/exports/latest.csv"},
-  "output_root": "s3://sapien-gmp/tracker/"
-}</code></pre>
-
-  <h2 id="dashboard">Dashboard</h2>
-
-  <h3>Bake</h3>
-  <p>After the ETL has written Parquet output, generate the single-page HTML dashboard:</p>
-<pre><code>python make_dashboard.py</code></pre>
-  <p>This loads the <code>global</code>, <code>country</code>, <code>country_gender</code>, <code>country_age_band</code>, and <code>country_gender_age_band</code> strata, embeds them as inline JSON, and writes <code>../dashboard/preview.html</code>. The file is fully self-contained (Observable Plot, d3, topojson, and world-atlas are loaded from CDN at view time) — open it by double-click, or serve it via the Flask app at the project root (<code>app.py</code>).</p>
-
-  <h3>Features</h3>
-  <ul>
-    <li><strong>Top KPIs</strong>: Weighted Impact Index, respondents, AI adoption rate, impact denominator — all reflecting the active filters.</li>
-    <li><strong>World choropleth</strong> colored by one of 10 metrics (definitions below).</li>
-    <li><strong>Filters</strong>: month + period (Single / Last 6 / Last 12), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
-    <li><strong>Country click</strong> opens a detail card with all impact shares and the dose-response curve.</li>
-  </ul>
-
-  <h2 id="metric-reference">Dashboard metric reference</h2>
-  <p>All metrics are computed per (stratum × month). When the <strong>Period</strong> is set to Last 6 / Last 12, values are pooled across the window using respondent-count weights (see <a href="#sec9">§9</a>).</p>
-  <table>
-    <thead>
-      <tr><th>Metric</th><th>Definition</th><th>Denominator</th><th>Range (clipped for map)</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td><strong>Weighted Impact Index</strong></td>
-        <td>Per-respondent score = sum of signed weights for each impact flag selected; map shows the average. Weights: <code>+1.0</code> new opportunities, <code>+0.5</code> improved quality, <code>−0.25</code> job anxiety, <code>−0.5</code> adaptation pressure, <code>−0.75</code> reduced income, <code>−1.0</code> job loss.</td>
-        <td>AI users with ≥1 impact response</td>
-        <td>≈ [−1, +1], shown [−0.3, +0.3]</td>
-      </tr>
-      <tr>
-        <td><strong>Net Impact Index</strong></td>
-        <td><code>positive_impact_share − negative_impact_share</code>. Positive = improved quality OR new opportunities. Negative = adaptation pressure OR job anxiety OR job loss OR reduced income.</td>
-        <td>(same)</td>
-        <td>[−1, +1], shown [−0.5, +0.5]</td>
-      </tr>
-      <tr>
-        <td><strong>AI Adoption Rate</strong></td>
-        <td>Share whose <code>ai_freq</code> is anything other than "Never".</td>
-        <td>All respondents in stratum</td>
-        <td>[0, 1], shown [0, 100%]</td>
-      </tr>
-      <tr>
-        <td><strong>Frequency Mean (0–6)</strong></td>
-        <td>Mean of the <code>ai_freq</code> integer scale: 0 Never, 1 Rarely, 2 Monthly, 3 Weekly, 4 Daily, 5 Constantly, 6 Always.</td>
-        <td>Respondents with non-null <code>ai_freq</code></td>
-        <td>[0, 6], shown [1, 5]</td>
-      </tr>
-      <tr><td><strong>Improved Quality (share)</strong></td><td>Share who selected "Improved my work quality or output".</td><td>AI users with ≥1 impact response</td><td>[0, 1], shown [0, 60%]</td></tr>
-      <tr><td><strong>New Opportunities (share)</strong></td><td>Share who selected "Created new job or income opportunities".</td><td>(same)</td><td>[0, 1], shown [0, 40%]</td></tr>
-      <tr><td><strong>Adaptation Pressure (share)</strong></td><td>Share who selected "Increased pressure to adapt or work faster".</td><td>(same)</td><td>[0, 1], shown [0, 60%]</td></tr>
-      <tr><td><strong>Job Anxiety (share)</strong></td><td>Share who selected "Made me worry about the future of my job or industry".</td><td>(same)</td><td>[0, 1], shown [0, 60%]</td></tr>
-      <tr><td><strong>Job Loss (share)</strong></td><td>Share who selected "Caused me to lose my job".</td><td>(same)</td><td>[0, 1], shown [0, 15%]</td></tr>
-      <tr><td><strong>Reduced Income (share)</strong></td><td>Share who selected "Reduced my income or made it harder to find work".</td><td>(same)</td><td>[0, 1], shown [0, 20%]</td></tr>
-    </tbody>
-  </table>
-  <div class="note">
-    <strong>Notes.</strong> Impact shares can sum to more than 100% — respondents may select multiple flags simultaneously. Cells with fewer than 50 respondents are suppressed (<code>MIN_N = 50</code>) and not drawn on the map. "Range (clipped for map)" is the visualization domain; outliers saturate at the endpoint color so the rest of the map stays readable.
-  </div>
-
-  <h1 class="spec">Metric specification</h1>
-  <p>The sections below are the authoritative metric contract.</p>
-
-  <h2 id="sec1">1. Purpose</h2>
-  <p>This section formally defines every quantity computed by the AI Use Impact Tracker. It is the single source of truth for the ETL pipeline, the metric layer, and the dashboard. Any change to a definition here requires a version bump and a rebuild of the Parquet outputs.</p>
-
-  <h2 id="sec2">2. Grain</h2>
-  <p>All metrics are computed at the following grain:</p>
+<p><code>make_preview.py</code> and <code>make_preview_v2.py</code> are the previous v1/v2 bakers; superseded by <code>make_dashboard.py</code>.</p>
+<h3 id="design-principle">Design principle</h3>
+<p>Only <code>src/sources/</code> knows where data comes from. Everything downstream operates on a DataFrame. To migrate CSV → Elasticsearch, swap one config line in <code>main.py</code>; the normaliser, metric layer, and publisher are unchanged.</p>
+<hr />
+<h2 id="running-modes">Running modes</h2>
+<h3 id="local">Local</h3>
+<div class="sourceCode" id="cb3"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="ex">python</span> main.py <span class="kw">\</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>  <span class="ex">--source</span> csv <span class="kw">\</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>  <span class="ex">--path</span> <span class="st">&quot;../SAMPLE DATA.xlsx&quot;</span> <span class="kw">\</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="ex">--out</span> ./output</span></code></pre></div>
+<p>Outputs land at <code>output/v1/metrics/stratum_level=.../year=YYYY/month=MM/part-0.parquet</code>.</p>
+<h3 id="container-railway-ecs">Container (Railway / ECS)</h3>
+<div class="sourceCode" id="cb4"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="ex">docker</span> build -t ai-use-tracker .</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="ex">docker</span> run --rm -v <span class="va">$(</span><span class="bu">pwd</span><span class="va">)</span>/data:/data ai-use-tracker</span></code></pre></div>
+<p>Mount the input CSV and output directory into <code>/data</code>.</p>
+<h3 id="lambda">Lambda</h3>
+<p>Package <code>main.py</code> + <code>lambda_handler.py</code> + <code>src/</code> as a Lambda layer or container image. Invoke with payload matching the <code>run()</code> config dict:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>  <span class="dt">&quot;source&quot;</span><span class="fu">:</span> <span class="st">&quot;csv&quot;</span><span class="fu">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>  <span class="dt">&quot;source_config&quot;</span><span class="fu">:</span> <span class="fu">{</span><span class="dt">&quot;path&quot;</span><span class="fu">:</span> <span class="st">&quot;s3://sapien-gmp/exports/latest.csv&quot;</span><span class="fu">},</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>  <span class="dt">&quot;output_root&quot;</span><span class="fu">:</span> <span class="st">&quot;s3://sapien-gmp/tracker/&quot;</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
+<hr />
+<h2 id="dashboard">Dashboard</h2>
+<h3 id="bake">Bake</h3>
+<p>After the ETL has written Parquet output, generate the single-page HTML dashboard:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="ex">python</span> make_dashboard.py</span></code></pre></div>
+<p>This loads the <code>global</code>, <code>country</code>, <code>country_gender</code>, <code>country_age_band</code>, and <code>country_gender_age_band</code> strata, embeds them as inline JSON, and writes <code>../dashboard/preview.html</code>. The file is fully self-contained (Observable Plot, d3, topojson, and world-atlas are loaded from CDN at view time) — open it by double-click, or serve it via the Flask app at the project root (<code>app.py</code>).</p>
+<h3 id="features">Features</h3>
+<ul>
+<li><strong>Top KPIs</strong>: Weighted Impact Index, respondents, AI adoption rate, impact denominator — all reflecting the active filters.</li>
+<li><strong>World choropleth</strong> colored by one of 10 metrics (definitions below).</li>
+<li><strong>Filters</strong>: month + period (Single / Last 6 / Last 12), color-by metric, gender, age band, frequency. Filter combinations select the appropriate precomputed stratum, so every value shown is exact.</li>
+<li><strong>Country click</strong> opens a detail card with all impact shares and the dose-response curve.</li>
+</ul>
+<hr />
+<h2 id="dashboard-metric-reference">Dashboard metric reference</h2>
+<p>All metrics are computed per (stratum × month). When the <strong>Period</strong> is set to Last 6 / Last 12, values are pooled across the window using respondent-count weights (see <a href="#9-rolling-window-pooling-dashboard-only">§9</a>).</p>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Definition</th>
+<th>Denominator</th>
+<th>Range (clipped for map)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Weighted Impact Index</strong></td>
+<td>Per-respondent score = sum of signed weights for each impact flag selected; map shows the average. Weights: <code>+1.0</code> new opportunities, <code>+0.5</code> improved quality, <code>−0.25</code> job anxiety, <code>−0.5</code> adaptation pressure, <code>−0.75</code> reduced income, <code>−1.0</code> job loss.</td>
+<td>AI users with ≥1 impact response</td>
+<td>≈ [−1, +1], shown [−0.3, +0.3]</td>
+</tr>
+<tr class="even">
+<td><strong>Net Impact Index</strong></td>
+<td><code>positive_impact_share − negative_impact_share</code>. Positive = improved quality OR new opportunities. Negative = adaptation pressure OR job anxiety OR job loss OR reduced income.</td>
+<td>(same)</td>
+<td>[−1, +1], shown [−0.5, +0.5]</td>
+</tr>
+<tr class="odd">
+<td><strong>AI Adoption Rate</strong></td>
+<td>Share whose <code>ai_freq</code> is anything other than “Never”.</td>
+<td>All respondents in stratum</td>
+<td>[0, 1], shown [0, 100%]</td>
+</tr>
+<tr class="even">
+<td><strong>Frequency Mean (0–6)</strong></td>
+<td>Mean of the <code>ai_freq</code> integer scale: 0 Never, 1 Rarely, 2 Monthly, 3 Weekly, 4 Daily, 5 Constantly, 6 Always.</td>
+<td>Respondents with non-null <code>ai_freq</code></td>
+<td>[0, 6], shown [1, 5]</td>
+</tr>
+<tr class="odd">
+<td><strong>Improved Quality (share)</strong></td>
+<td>Share who selected “Improved my work quality or output”.</td>
+<td>AI users with ≥1 impact response</td>
+<td>[0, 1], shown [0, 60%]</td>
+</tr>
+<tr class="even">
+<td><strong>New Opportunities (share)</strong></td>
+<td>Share who selected “Created new job or income opportunities”.</td>
+<td>(same)</td>
+<td>[0, 1], shown [0, 40%]</td>
+</tr>
+<tr class="odd">
+<td><strong>Adaptation Pressure (share)</strong></td>
+<td>Share who selected “Increased pressure to adapt or work faster”.</td>
+<td>(same)</td>
+<td>[0, 1], shown [0, 60%]</td>
+</tr>
+<tr class="even">
+<td><strong>Job Anxiety (share)</strong></td>
+<td>Share who selected “Made me worry about the future of my job or industry”.</td>
+<td>(same)</td>
+<td>[0, 1], shown [0, 60%]</td>
+</tr>
+<tr class="odd">
+<td><strong>Job Loss (share)</strong></td>
+<td>Share who selected “Caused me to lose my job”.</td>
+<td>(same)</td>
+<td>[0, 1], shown [0, 15%]</td>
+</tr>
+<tr class="even">
+<td><strong>Reduced Income (share)</strong></td>
+<td>Share who selected “Reduced my income or made it harder to find work”.</td>
+<td>(same)</td>
+<td>[0, 1], shown [0, 20%]</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Notes</strong> - Impact shares can sum to more than 100% — respondents may select multiple flags simultaneously. - Cells with fewer than 50 respondents are suppressed (<code>MIN_N = 50</code>) and not drawn on the map. - “Range (clipped for map)” is the visualization domain; outliers saturate at the endpoint color so the rest of the map stays readable.</p>
+<hr />
+<h1 id="metric-specification">Metric specification</h1>
+<p>The sections below are the authoritative metric contract.</p>
+<h2 id="purpose">1. Purpose</h2>
+<p>This section formally defines every quantity computed by the AI Use Impact Tracker. It is the single source of truth for the ETL pipeline, the metric layer, and the dashboard. Any change to a definition here requires a version bump and a rebuild of the Parquet outputs.</p>
+<h2 id="grain">2. Grain</h2>
+<p>All metrics are computed at the following grain:</p>
 <pre><code>(stratum_level, stratum_value, year, month)</code></pre>
-  <p>where <code>stratum_level</code> is one of <code>{global, country, gender, age_band, country_gender, country_age_band, gender_age_band, country_gender_age_band}</code>. Each stratum level is emitted as a separate Parquet partition.</p>
-  <p>Respondent-level records are intermediate; the tracker only publishes stratified aggregates.</p>
-
-  <h2 id="sec3">3. Input columns (from GMP)</h2>
-  <table>
-    <thead><tr><th>Source column</th><th>Role</th><th>Type</th></tr></thead>
-    <tbody>
-      <tr><td><code>ai_freq</code></td><td>Exposure</td><td>7-level ordinal (string)</td></tr>
-      <tr><td><code>ai_impact_work</code></td><td>Outcome</td><td>Multi-select, pipe-delimited (string)</td></tr>
-      <tr><td><code>country</code></td><td>Stratifier</td><td>Categorical (string)</td></tr>
-      <tr><td><code>gender</code> / <code>biological_sex</code></td><td>Stratifier</td><td>Categorical (string)</td></tr>
-      <tr><td><code>age</code></td><td>Stratifier</td><td>Mixed integer + band (string/int)</td></tr>
-      <tr><td><code>year</code>, <code>month</code></td><td>Time</td><td>Integer</td></tr>
-    </tbody>
-  </table>
-
-  <h2 id="sec4">4. Normalisation rules</h2>
-
-  <h3>4.1 <code>ai_freq</code> → integer scale</h3>
-  <table>
-    <thead><tr><th>Canonical label</th><th>Integer</th><th>Raw values mapped</th></tr></thead>
-    <tbody>
-      <tr><td>Never</td><td class="right">0</td><td>"I have never used an AI assistant"</td></tr>
-      <tr><td>Rarely</td><td class="right">1</td><td>"Rarely"</td></tr>
-      <tr><td>Monthly</td><td class="right">2</td><td>"A few times a month"</td></tr>
-      <tr><td>Weekly</td><td class="right">3</td><td>"Several days a week"</td></tr>
-      <tr><td>Daily</td><td class="right">4</td><td>"Several times a day"</td></tr>
-      <tr><td>Constantly</td><td class="right">5</td><td>"Constantly", "Constamment", "Constantly (when awake)"</td></tr>
-      <tr><td>Always</td><td class="right">6</td><td>"All of the time"</td></tr>
-      <tr><td>(null)</td><td class="right">—</td><td>"N/A", any other value</td></tr>
-    </tbody>
-  </table>
-
-  <h3>4.2 <code>ai_impact_work</code> → nine binary flags</h3>
-  <p>The raw field is split on <code>|</code> and each atomic option yields one Boolean flag:</p>
-  <table>
-    <thead><tr><th>Flag</th><th>Raw atomic option</th><th>Sentiment</th></tr></thead>
-    <tbody>
-      <tr><td><code>impact_none</code></td><td>"No impact", "Nenhum impacto"</td><td>Neutral</td></tr>
-      <tr><td><code>impact_improved_quality</code></td><td>"Improved my work quality or output"</td><td class="pos">Positive</td></tr>
-      <tr><td><code>impact_new_opportunities</code></td><td>"Created new job or income opportunities"</td><td class="pos">Positive</td></tr>
-      <tr><td><code>impact_adaptation_pressure</code></td><td>"Increased pressure to adapt or work faster"</td><td class="neg">Negative</td></tr>
-      <tr><td><code>impact_job_anxiety</code></td><td>"Made me worry about the future of my job or industry"</td><td class="neg">Negative</td></tr>
-      <tr><td><code>impact_job_loss</code></td><td>"Caused me to lose my job"</td><td class="neg">Negative</td></tr>
-      <tr><td><code>impact_reduced_income</code></td><td>"Reduced my income or made it harder to find work"</td><td class="neg">Negative</td></tr>
-      <tr><td><code>impact_other</code></td><td>"Another impact not listed here"</td><td>Neutral</td></tr>
-      <tr><td><code>impact_not_sure</code></td><td>"Not sure", "No estoy seguro/a", "Not No estoy seguro/a"</td><td>Neutral</td></tr>
-    </tbody>
-  </table>
-  <p>Multiple flags may be true for the same respondent. An all-"N/A" cell yields <code>impact_na = true</code> and all other flags false; such rows are <strong>excluded</strong> from impact-share denominators but retained for adoption-rate denominators.</p>
-
-  <h3>4.3 <code>age</code> → age band</h3>
-  <p>Integer ages 18–20 map to band <code>"18-20"</code>. All other values pass through if they already match one of <code>{"21-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-84", "85+"}</code>; any other value becomes <code>null</code>.</p>
-
-  <h3>4.4 <code>gender</code></h3>
-  <p>Use <code>gender</code> when present and non-null; fall back to <code>biological_sex</code>. Values outside <code>{Female, Male, Non-binary, Other/Intersex, Prefer not to say}</code> are coerced to <code>null</code>.</p>
-
-  <h3>4.5 <code>country</code></h3>
-  <p>Canonicalised against an ISO-3166 dictionary; non-Latin-script variants (e.g. Hindi rendering of "India") map to their canonical English name. Countries below the minimum-N threshold for a given month are pooled under <code>"(Other)"</code> in the country stratum but remain un-pooled in the global stratum.</p>
-
-  <h2 id="sec5">5. Metrics</h2>
-
-  <h3>5.1 Core indicators (per stratum per month)</h3>
-  <table>
-    <thead><tr><th>Metric</th><th>Definition</th><th>Denominator</th></tr></thead>
-    <tbody>
-      <tr><td><code>n_respondents</code></td><td>Count of respondents in stratum</td><td>—</td></tr>
-      <tr><td><code>adoption_rate</code></td><td>Share with <code>ai_freq &gt;= 1</code></td><td>All respondents in stratum</td></tr>
-      <tr><td><code>freq_mean</code></td><td>Mean of <code>ai_freq</code> integer scale</td><td>Respondents with non-null <code>ai_freq</code></td></tr>
-      <tr><td><code>freq_distribution</code></td><td>Array of shares, one per ordinal level 0–6</td><td>Respondents with non-null <code>ai_freq</code></td></tr>
-    </tbody>
-  </table>
-
-  <h3>5.2 Impact indicators (per stratum per month)</h3>
-  <p><strong>Denominator</strong> for every metric in this section: respondents with <code>ai_freq &gt;= 1</code> AND at least one impact flag set (i.e. excludes "never used" and excludes all-N/A).</p>
-  <table>
-    <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
-    <tbody>
-      <tr><td><code>impact_share_improved_quality</code></td><td>Share where <code>impact_improved_quality = true</code></td></tr>
-      <tr><td><code>impact_share_new_opportunities</code></td><td>Share where <code>impact_new_opportunities = true</code></td></tr>
-      <tr><td><code>impact_share_adaptation_pressure</code></td><td>Share where <code>impact_adaptation_pressure = true</code></td></tr>
-      <tr><td><code>impact_share_job_anxiety</code></td><td>Share where <code>impact_job_anxiety = true</code></td></tr>
-      <tr><td><code>impact_share_job_loss</code></td><td>Share where <code>impact_job_loss = true</code></td></tr>
-      <tr><td><code>impact_share_reduced_income</code></td><td>Share where <code>impact_reduced_income = true</code></td></tr>
-      <tr><td><code>impact_share_none</code></td><td>Share where <code>impact_none = true</code></td></tr>
-      <tr><td><code>impact_share_other</code></td><td>Share where <code>impact_other = true</code></td></tr>
-      <tr><td><code>impact_share_not_sure</code></td><td>Share where <code>impact_not_sure = true</code></td></tr>
-      <tr><td><code>positive_impact_share</code></td><td>Share where <code>impact_improved_quality OR impact_new_opportunities</code></td></tr>
-      <tr><td><code>negative_impact_share</code></td><td>Share where any of <code>impact_adaptation_pressure</code>, <code>impact_job_anxiety</code>, <code>impact_job_loss</code>, <code>impact_reduced_income</code></td></tr>
-      <tr><td><strong><code>net_impact_index</code></strong></td><td><code>positive_impact_share − negative_impact_share</code>, range [−1, 1]</td></tr>
-      <tr><td><strong><code>weighted_impact_index</code></strong></td><td>Mean across the impact denominator of the per-respondent score, where score = sum of <code>IMPACT_WEIGHTS[flag]</code> for each flag set true. See §5.2.1.</td></tr>
-    </tbody>
-  </table>
-  <p>Shares can sum to more than 100% because multiple flags may be true for the same respondent.</p>
-
-  <h4>5.2.1 <code>IMPACT_WEIGHTS</code> (Tara's weighted index)</h4>
-  <table>
-    <thead><tr><th>Flag</th><th>Weight</th></tr></thead>
-    <tbody>
-      <tr><td><code>impact_new_opportunities</code></td><td class="right pos">+1.0</td></tr>
-      <tr><td><code>impact_improved_quality</code></td><td class="right pos">+0.5</td></tr>
-      <tr><td><code>impact_job_anxiety</code></td><td class="right neg">−0.25</td></tr>
-      <tr><td><code>impact_adaptation_pressure</code></td><td class="right neg">−0.5</td></tr>
-      <tr><td><code>impact_reduced_income</code></td><td class="right neg">−0.75</td></tr>
-      <tr><td><code>impact_job_loss</code></td><td class="right neg">−1.0</td></tr>
-      <tr><td><code>impact_none</code>, <code>impact_other</code>, <code>impact_not_sure</code></td><td class="right">0</td></tr>
-    </tbody>
-  </table>
-  <p>Range is roughly [−1, +1] but the distribution is <strong>not symmetric</strong> — a respondent must select multiple negative flags simultaneously to reach the lower bound. Confidence interval (<code>weighted_impact_index_ci_low/high</code>) is the 95% normal-approximation interval <code>mean ± 1.96 · SE</code>.</p>
-
-  <h3>5.3 Dose-response</h3>
-  <p>For each stratum × month, compute <code>net_impact_index</code> within each <code>ai_freq</code> level (0–6). This is emitted as a nested array column <code>dose_response</code> indexed by frequency level.</p>
-
-  <h3>5.4 Confidence intervals</h3>
-  <p>For all share metrics, compute a 95% Wilson score interval. For <code>freq_mean</code>, compute a standard-error-based 95% CI. CIs are emitted as <code>{metric}_ci_low</code> and <code>{metric}_ci_high</code> columns.</p>
-
-  <h2 id="sec6">6. Minimum-N suppression</h2>
-  <p>Any stratum-month cell with <code>n_respondents &lt; 50</code> is flagged <code>suppressed = true</code> and its metric values are written as <code>null</code>. The dashboard must not display suppressed cells.</p>
-  <p>For multi-dimensional strata (e.g. country × gender × age_band), the threshold is applied to the finest cell. Under-represented countries roll up to <code>"(Other)"</code> before the threshold is applied at the country level.</p>
-
-  <h2 id="sec7">7. Output schema contract</h2>
-  <p>Parquet is partitioned as:</p>
+<p>where <code>stratum_level</code> is one of <code>{global, country, gender, age_band, country_gender, country_age_band, gender_age_band, country_gender_age_band}</code>. Each stratum level is emitted as a separate Parquet partition.</p>
+<p>Respondent-level records are intermediate; the tracker only publishes stratified aggregates.</p>
+<h2 id="input-columns-from-gmp">3. Input Columns (from GMP)</h2>
+<table>
+<thead>
+<tr class="header">
+<th>Source column</th>
+<th>Role</th>
+<th>Type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>ai_freq</code></td>
+<td>Exposure</td>
+<td>7-level ordinal (string)</td>
+</tr>
+<tr class="even">
+<td><code>ai_impact_work</code></td>
+<td>Outcome</td>
+<td>Multi-select, pipe-delimited (string)</td>
+</tr>
+<tr class="odd">
+<td><code>country</code></td>
+<td>Stratifier</td>
+<td>Categorical (string)</td>
+</tr>
+<tr class="even">
+<td><code>gender</code> / <code>biological_sex</code></td>
+<td>Stratifier</td>
+<td>Categorical (string)</td>
+</tr>
+<tr class="odd">
+<td><code>age</code></td>
+<td>Stratifier</td>
+<td>Mixed integer + band (string/int)</td>
+</tr>
+<tr class="even">
+<td><code>year</code>, <code>month</code></td>
+<td>Time</td>
+<td>Integer</td>
+</tr>
+</tbody>
+</table>
+<h2 id="normalisation-rules">4. Normalisation Rules</h2>
+<h3 id="ai_freq-integer-scale">4.1 <code>ai_freq</code> → integer scale</h3>
+<table>
+<thead>
+<tr class="header">
+<th>Canonical label</th>
+<th>Integer</th>
+<th>Raw values mapped</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Never</td>
+<td>0</td>
+<td>“I have never used an AI assistant”</td>
+</tr>
+<tr class="even">
+<td>Rarely</td>
+<td>1</td>
+<td>“Rarely”</td>
+</tr>
+<tr class="odd">
+<td>Monthly</td>
+<td>2</td>
+<td>“A few times a month”</td>
+</tr>
+<tr class="even">
+<td>Weekly</td>
+<td>3</td>
+<td>“Several days a week”</td>
+</tr>
+<tr class="odd">
+<td>Daily</td>
+<td>4</td>
+<td>“Several times a day”</td>
+</tr>
+<tr class="even">
+<td>Constantly</td>
+<td>5</td>
+<td>“Constantly”, “Constamment”, “Constantly (when awake)”</td>
+</tr>
+<tr class="odd">
+<td>Always</td>
+<td>6</td>
+<td>“All of the time”</td>
+</tr>
+<tr class="even">
+<td>(null)</td>
+<td>—</td>
+<td>“N/A”, any other value</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ai_impact_work-nine-binary-flags">4.2 <code>ai_impact_work</code> → nine binary flags</h3>
+<p>The raw field is split on <code>|</code> and each atomic option yields one Boolean flag:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th>Raw atomic option</th>
+<th>Sentiment</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>impact_none</code></td>
+<td>“No impact”, “Nenhum impacto”</td>
+<td>Neutral</td>
+</tr>
+<tr class="even">
+<td><code>impact_improved_quality</code></td>
+<td>“Improved my work quality or output”</td>
+<td><strong>Positive</strong></td>
+</tr>
+<tr class="odd">
+<td><code>impact_new_opportunities</code></td>
+<td>“Created new job or income opportunities”</td>
+<td><strong>Positive</strong></td>
+</tr>
+<tr class="even">
+<td><code>impact_adaptation_pressure</code></td>
+<td>“Increased pressure to adapt or work faster”</td>
+<td><strong>Negative</strong></td>
+</tr>
+<tr class="odd">
+<td><code>impact_job_anxiety</code></td>
+<td>“Made me worry about the future of my job or industry”</td>
+<td><strong>Negative</strong></td>
+</tr>
+<tr class="even">
+<td><code>impact_job_loss</code></td>
+<td>“Caused me to lose my job”</td>
+<td><strong>Negative</strong></td>
+</tr>
+<tr class="odd">
+<td><code>impact_reduced_income</code></td>
+<td>“Reduced my income or made it harder to find work”</td>
+<td><strong>Negative</strong></td>
+</tr>
+<tr class="even">
+<td><code>impact_other</code></td>
+<td>“Another impact not listed here”</td>
+<td>Neutral</td>
+</tr>
+<tr class="odd">
+<td><code>impact_not_sure</code></td>
+<td>“Not sure”, “No estoy seguro/a”, “Not No estoy seguro/a”</td>
+<td>Neutral</td>
+</tr>
+</tbody>
+</table>
+<p>Multiple flags may be true for the same respondent. An all-“N/A” cell yields <code>impact_na = true</code> and all other flags false; such rows are <strong>excluded</strong> from impact-share denominators but retained for adoption-rate denominators.</p>
+<h3 id="age-age-band">4.3 <code>age</code> → age band</h3>
+<p>Integer ages 18–20 map to band <code>"18-20"</code>. All other values pass through if they already match one of <code>{"21-24", "25-34", "35-44", "45-54", "55-64", "65-74", "75-84", "85+"}</code>; any other value becomes <code>null</code>.</p>
+<h3 id="gender">4.4 <code>gender</code></h3>
+<p>Use <code>gender</code> when present and non-null; fall back to <code>biological_sex</code>. Values outside <code>{Female, Male, Non-binary, Other/Intersex, Prefer not to say}</code> are coerced to <code>null</code>.</p>
+<h3 id="country">4.5 <code>country</code></h3>
+<p>Canonicalised against an ISO-3166 dictionary; non-Latin-script variants (e.g. Hindi rendering of “India”) map to their canonical English name. Countries below the minimum-N threshold for a given month are pooled under <code>"(Other)"</code> in the country stratum but remain un-pooled in the global stratum.</p>
+<h2 id="metrics">5. Metrics</h2>
+<h3 id="core-indicators-per-stratum-per-month">5.1 Core indicators (per stratum per month)</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Definition</th>
+<th>Denominator</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n_respondents</code></td>
+<td>Count of respondents in stratum</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td><code>adoption_rate</code></td>
+<td>Share with <code>ai_freq &gt;= 1</code></td>
+<td>All respondents in stratum</td>
+</tr>
+<tr class="odd">
+<td><code>freq_mean</code></td>
+<td>Mean of <code>ai_freq</code> integer scale</td>
+<td>Respondents with non-null <code>ai_freq</code></td>
+</tr>
+<tr class="even">
+<td><code>freq_distribution</code></td>
+<td>Array of shares, one per ordinal level 0–6</td>
+<td>Respondents with non-null <code>ai_freq</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="impact-indicators-per-stratum-per-month">5.2 Impact indicators (per stratum per month)</h3>
+<p>Denominator for every metric in this section: respondents with <code>ai_freq &gt;= 1</code> AND at least one impact flag set (i.e. excludes “never used” and excludes all-N/A).</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>impact_share_improved_quality</code></td>
+<td>Share where <code>impact_improved_quality = true</code></td>
+</tr>
+<tr class="even">
+<td><code>impact_share_new_opportunities</code></td>
+<td>Share where <code>impact_new_opportunities = true</code></td>
+</tr>
+<tr class="odd">
+<td><code>impact_share_adaptation_pressure</code></td>
+<td>Share where <code>impact_adaptation_pressure = true</code></td>
+</tr>
+<tr class="even">
+<td><code>impact_share_job_anxiety</code></td>
+<td>Share where <code>impact_job_anxiety = true</code></td>
+</tr>
+<tr class="odd">
+<td><code>impact_share_job_loss</code></td>
+<td>Share where <code>impact_job_loss = true</code></td>
+</tr>
+<tr class="even">
+<td><code>impact_share_reduced_income</code></td>
+<td>Share where <code>impact_reduced_income = true</code></td>
+</tr>
+<tr class="odd">
+<td><code>impact_share_none</code></td>
+<td>Share where <code>impact_none = true</code></td>
+</tr>
+<tr class="even">
+<td><code>impact_share_other</code></td>
+<td>Share where <code>impact_other = true</code></td>
+</tr>
+<tr class="odd">
+<td><code>impact_share_not_sure</code></td>
+<td>Share where <code>impact_not_sure = true</code></td>
+</tr>
+<tr class="even">
+<td><code>positive_impact_share</code></td>
+<td>Share where <code>impact_improved_quality OR impact_new_opportunities</code></td>
+</tr>
+<tr class="odd">
+<td><code>negative_impact_share</code></td>
+<td>Share where any of <code>impact_adaptation_pressure</code>, <code>impact_job_anxiety</code>, <code>impact_job_loss</code>, <code>impact_reduced_income</code></td>
+</tr>
+<tr class="even">
+<td><strong><code>net_impact_index</code></strong></td>
+<td><span class="math inline">\(\texttt{NII} = \texttt{positive\_impact\_share} - \texttt{negative\_impact\_share}\)</span>, range <span class="math inline">\([-1, 1]\)</span></td>
+</tr>
+<tr class="odd">
+<td><strong><code>weighted_impact_index</code></strong></td>
+<td><span class="math inline">\(\texttt{WII} = \frac{1}{N_d} \sum_{i \in \mathcal{D}} s_i\)</span>, where <span class="math inline">\(s_i = \sum_f w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]\)</span>. See §5.2.1.</td>
+</tr>
+</tbody>
+</table>
+<p>Shares can sum to more than 100% because multiple flags may be true for the same respondent.</p>
+<h4 id="impact_weights-taras-weighted-index">5.2.1 <code>IMPACT_WEIGHTS</code> (Tara’s weighted index)</h4>
+<table>
+<thead>
+<tr class="header">
+<th>Flag</th>
+<th style="text-align: right;">Weight</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>impact_new_opportunities</code></td>
+<td style="text-align: right;">+1.0</td>
+</tr>
+<tr class="even">
+<td><code>impact_improved_quality</code></td>
+<td style="text-align: right;">+0.5</td>
+</tr>
+<tr class="odd">
+<td><code>impact_job_anxiety</code></td>
+<td style="text-align: right;">−0.25</td>
+</tr>
+<tr class="even">
+<td><code>impact_adaptation_pressure</code></td>
+<td style="text-align: right;">−0.5</td>
+</tr>
+<tr class="odd">
+<td><code>impact_reduced_income</code></td>
+<td style="text-align: right;">−0.75</td>
+</tr>
+<tr class="even">
+<td><code>impact_job_loss</code></td>
+<td style="text-align: right;">−1.0</td>
+</tr>
+<tr class="odd">
+<td><code>impact_none</code>, <code>impact_other</code>, <code>impact_not_sure</code></td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p>Range is roughly <span class="math inline">\([-1, +1]\)</span> but the distribution is <strong>not symmetric</strong> — a respondent must select multiple negative flags simultaneously to reach the lower bound. Confidence interval (<code>weighted_impact_index_ci_low/high</code>) is the 95% Wald interval:</p>
+<p><span class="math display">\[
+\texttt{CI} = \texttt{WII} \;\pm\; 1.96 \times \frac{\sigma_s}{\sqrt{N_d}}
+\]</span></p>
+<h3 id="dose-response">5.3 Dose-response</h3>
+<p>For each stratum × month, compute <code>net_impact_index</code> within each <code>ai_freq</code> level (0–6). This is emitted as a nested array column <code>dose_response</code> indexed by frequency level.</p>
+<h3 id="confidence-intervals">5.4 Confidence intervals</h3>
+<p><strong>Share metrics</strong> — Wilson score 95% CI (bounded <span class="math inline">\([0, 1]\)</span>):</p>
+<p><span class="math display">\[
+\tilde{p} \;\pm\; \frac{z \;\sqrt{\dfrac{\hat{p}(1-\hat{p}) + z^2/4n}{n}}}{1 + z^2/n}, \quad z = 1.96
+\]</span></p>
+<p><strong>Continuous means</strong> (<code>freq_mean</code>, <code>weighted_impact_index</code>) — Wald 95% CI:</p>
+<p><span class="math display">\[
+\texttt{CI} = \bar{x} \;\pm\; 1.96 \times \frac{\sigma}{\sqrt{N}}  \quad (\texttt{ddof}=1)
+\]</span></p>
+<p>CIs are emitted as <code>{metric}_ci_low</code> and <code>{metric}_ci_high</code> columns.</p>
+<h2 id="minimum-n-suppression">6. Minimum-N Suppression</h2>
+<p>Any stratum-month cell with <code>n_respondents &lt; 50</code> is flagged <code>suppressed = true</code> and its metric values are written as <code>null</code>. The dashboard must not display suppressed cells.</p>
+<p>For multi-dimensional strata (e.g. country × gender × age_band), the threshold is applied to the finest cell. Under-represented countries roll up to <code>"(Other)"</code> before the threshold is applied at the country level.</p>
+<h2 id="output-schema-contract">7. Output Schema Contract</h2>
+<p>Parquet is partitioned as:</p>
 <pre><code>output/v1/metrics/stratum_level={level}/year={YYYY}/month={MM}/part-0.parquet</code></pre>
-  <p><code>{level}</code> is one of the eight values in §2. The <code>country_gender</code>, <code>country_age_band</code>, and <code>country_gender_age_band</code> cross-strata are required for the dashboard's combined gender × age filtering.</p>
-  <p><code>dose_response</code> is a JSON-encoded string column: an object keyed by ai_freq integer level (<code>"0"</code>–<code>"6"</code>) with <code>net_impact_index</code> value or <code>null</code> when below <code>MIN_N</code> for that level.</p>
-  <p>Column order is fixed. Adding columns is allowed in minor versions; removing or renaming columns requires a major version bump (<code>v2/</code>).</p>
-
-  <h2 id="sec8">8. Known limitations</h2>
-  <ul>
-    <li>No survey weights applied; metrics treat respondents as an equal-weighted sample.</li>
-    <li>Self-selection bias not adjusted; associations between <code>ai_freq</code> and impact are descriptive.</li>
-    <li>Composition effects not decomposed; month-over-month changes may reflect respondent mix, not attitude shift.</li>
-    <li>CIs assume simple random sampling; will be revised when weights are introduced.</li>
-    <li><code>IMPACT_WEIGHTS</code> (§5.2.1) reflect editorial judgment by the Sapien Labs team about relative severity, not empirical calibration.</li>
-  </ul>
-  <p>These are explicit Phase 1 scope boundaries. Phase 2 will add weighting and compositional adjustment.</p>
-
-  <h2 id="sec9">9. Rolling-window pooling (dashboard only)</h2>
-  <p>The dashboard's <strong>Period</strong> selector (Single month / Last 6 / Last 12) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.</p>
-  <p>Pooling rules per (country × gender × age) cell across the window months:</p>
-  <table>
-    <thead><tr><th>Field</th><th>Aggregation</th><th>Weight</th></tr></thead>
-    <tbody>
-      <tr><td><code>n_respondents</code>, <code>n_impact_denominator</code></td><td>sum</td><td>—</td></tr>
-      <tr><td><code>adoption_rate</code>, <code>freq_mean</code></td><td>weighted mean</td><td><code>n_respondents</code></td></tr>
-      <tr><td><code>weighted_impact_index</code>, <code>net_impact_index</code>, all <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code></td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
-      <tr><td><code>dose_response[k]</code> (for k = 1…6)</td><td>weighted mean</td><td><code>n_impact_denominator</code></td></tr>
-    </tbody>
-  </table>
-  <p><strong>This is approximate.</strong> The exact pooled value would require re-running the metric layer on the pooled respondent-level data; the dashboard's weighted-mean of monthly aggregates is correct in expectation but ignores within-month variance. Suppression cells (originally below <code>MIN_N</code>) are dropped before pooling, so a country may appear in the rolling window even if some constituent months were individually suppressed.</p>
-
-  <h2 id="downstream">Downstream consumer</h2>
-  <p>The Parquet output can also be read directly by external dashboards (Observable Framework, Evidence.dev) via DuckDB-WASM. The Parquet layout in §7 is the stable contract.</p>
-
-  <h2 id="changelog">Changelog</h2>
-  <h3>v0.2</h3>
-  <ul>
-    <li>§4.2 — added <code>impact_job_loss</code> and <code>impact_reduced_income</code> flags (negative sentiment).</li>
-    <li>§5.2 — added <code>weighted_impact_index</code> (signed-weight per-respondent score, averaged over the impact denominator).</li>
-    <li>§7 — added <code>country_gender</code>, <code>country_age_band</code>, <code>country_gender_age_band</code> cross-strata to the published Parquet output (already computed in v0.1, now part of the published contract).</li>
-    <li>§9 — added rolling-window pooling rules used by the dashboard.</li>
-    <li>Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 6 / Last 12 period selector.</li>
-    <li>README and metric_spec consolidated into this single file.</li>
-  </ul>
-  <h3>v0.1</h3>
-  <ul>
-    <li>Initial Phase 1 release: CSV → Parquet metric layer with 8 stratum levels, 7 impact flags, <code>net_impact_index</code>, and 95% Wilson CIs.</li>
-  </ul>
-
-  <footer>Global Mind Project — Sapien Labs · This file is the authoritative metric contract.</footer>
-</div>
+<p><code>{level}</code> is one of the eight values in §2. The <code>country_gender</code>, <code>country_age_band</code>, and <code>country_gender_age_band</code> cross-strata are required for the dashboard’s combined gender × age filtering.</p>
+<p><code>dose_response</code> is a JSON-encoded string column: an object keyed by ai_freq integer level (<code>"0"</code>–<code>"6"</code>) with <code>net_impact_index</code> value or <code>null</code> when below <code>MIN_N</code> for that level.</p>
+<p>Column order is fixed. Adding columns is allowed in minor versions; removing or renaming columns requires a major version bump (<code>v2/</code>).</p>
+<h2 id="known-limitations">8. Known Limitations</h2>
+<h3 id="no-survey-weights-non-probability-sample">8.1 No survey weights (non-probability sample)</h3>
+<p>The GMP respondent pool is a convenience sample recruited via online ads (Google Display, Meta, and organic search). It carries no post-stratification or design weights, so demographic proportions in the data do not match national population proportions. All metrics — WII, adoption rate, impact shares — are descriptive statistics of the responding population, not population-level estimates. Associations between <code>ai_freq</code> and impact outcomes are correlational; no causal claims are supported.</p>
+<p><em>Planned mitigation:</em> Demographic-weighted averaging using UN World Population Prospects age–sex distributions is on the roadmap.</p>
+<h3 id="composition-effects-in-time-series">8.2 Composition effects in time-series</h3>
+<p>Month-over-month changes may reflect shifts in who is responding rather than genuine attitudinal change — e.g. a recruitment campaign increasing younger respondents, or country mix changes between months. The stratified breakdowns partially mitigate this by holding one dimension constant, but cross-dimensional composition effects remain. Rolling-window views help smooth short-term fluctuations.</p>
+<h3 id="weight-selection">8.3 Weight selection</h3>
+<p>The nine <code>IMPACT_WEIGHTS</code> values (§5.2.1) were chosen by stakeholder judgment, not derived from empirical data. Different weight schemes would produce different index values and could alter relative country rankings. Sensitivity analysis has not yet been conducted. The asymmetric design — total negative weight (−2.5) exceeding total positive weight (+1.5) — is intentional but should be disclosed when comparing WII values across studies.</p>
+<h3 id="rolling-window-approximation">8.4 Rolling-window approximation</h3>
+<p>Rolling-window pooling (§9) computes a weighted average of pre-aggregated monthly metrics. The exact calculation would re-aggregate from individual-level data. The approximation introduces minor error (±1 percentage point within 3–6 month windows) because the impact denominator differs slightly from total N. This trade-off is accepted for client-side performance.</p>
+<h3 id="dose-response-uses-nii-not-wii">8.5 Dose-response uses NII, not WII</h3>
+<p>The dose-response charts show net impact by AI frequency level using the simpler Net Impact Index, not the Weighted Impact Index. Adding weighted dose-response is a planned enhancement.</p>
+<h3 id="data-source-filtering-not-yet-implemented">8.6 Data source filtering not yet implemented</h3>
+<p>Per Tara’s specification, the production version should restrict the respondent pool to Google Display and Meta traffic sources and down-weight organic/search traffic to 10%. This filtering is not yet implemented. The current pipeline processes all traffic sources equally.</p>
+<h3 id="multi-select-interaction-effects">8.7 Multi-select interaction effects</h3>
+<p>The WII treats each flag independently — a respondent selecting both “improved quality” (+0.5) and “job anxiety” (−0.25) receives the sum (+0.25). This additive model does not capture potential interactions between simultaneous positive and negative experiences.</p>
+<h3 id="suppression-and-small-cell-noise">8.8 Suppression and small-cell noise</h3>
+<p>Strata with fewer than 50 respondents are suppressed entirely. For strata just above the threshold (e.g., N = 55), confidence intervals are wide and point estimates can shift substantially. Users should exercise caution when interpreting metrics from low-N strata.</p>
+<h3 id="cis-assume-simple-random-sampling">8.9 CIs assume simple random sampling</h3>
+<p>Confidence intervals will be revised once survey weights are introduced.</p>
+<h2 id="rolling-window-pooling-dashboard-only">9. Rolling-Window Pooling (dashboard only)</h2>
+<p>The dashboard’s <strong>Period</strong> selector (Single month / Last 6 / Last 12) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.</p>
+<p>Pooling rules per (country × gender × age) cell across the window months. For a metric <span class="math inline">\(x\)</span> pooled over months <span class="math inline">\(m_1, \ldots, m_w\)</span> with weights <span class="math inline">\(n_m\)</span>:</p>
+<p><span class="math display">\[
+x_{\text{pooled}} = \frac{\sum_{m=1}^{w} n_m \cdot x_m}{\sum_{m=1}^{w} n_m}
+\]</span></p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Field</th>
+<th>Aggregation</th>
+<th>Weight (<span class="math inline">\(n_m\)</span>)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>n_respondents</code>, <code>n_impact_denominator</code></td>
+<td>sum</td>
+<td>—</td>
+</tr>
+<tr class="even">
+<td><code>adoption_rate</code>, <code>freq_mean</code></td>
+<td>weighted mean</td>
+<td><code>n_respondents</code></td>
+</tr>
+<tr class="odd">
+<td><code>weighted_impact_index</code>, <code>net_impact_index</code>, all <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code></td>
+<td>weighted mean</td>
+<td><code>n_impact_denominator</code></td>
+</tr>
+<tr class="even">
+<td><code>dose_response[k]</code> (for <span class="math inline">\(k = 1, \ldots, 6\)</span>)</td>
+<td>weighted mean</td>
+<td><code>n_impact_denominator</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>This is approximate.</strong> The exact pooled value would require re-running the metric layer on the pooled respondent-level data; the dashboard’s weighted-mean of monthly aggregates is correct in expectation but ignores within-month variance. Suppression cells (originally below <code>MIN_N</code>) are dropped before pooling, so a country may appear in the rolling window even if some constituent months were individually suppressed.</p>
+<hr />
+<h2 id="downstream-consumer">Downstream consumer</h2>
+<p>The Parquet output can also be read directly by external dashboards (Observable Framework, Evidence.dev) via DuckDB-WASM. The Parquet layout in §7 is the stable contract.</p>
+<hr />
+<h2 id="changelog">Changelog</h2>
+<p><strong>v0.3</strong> - §8 — expanded Known Limitations from 5 bullet points to 9 detailed subsections covering non-probability sampling, composition effects, weight selection, rolling-window approximation, dose-response gap, data source filtering, multi-select interactions, small-cell noise, and CI assumptions. - Updated dataset: 266,589 rows covering June 2025 – April 2026 (expanded from 75,404 rows / 4 months in Phase 1). - Added <code>AI Use Impact Tracker v2 - Methodology.docx</code> as the external stakeholder-facing methodology document.</p>
+<p><strong>v0.2</strong> - §4.2 — added <code>impact_job_loss</code> and <code>impact_reduced_income</code> flags (negative sentiment). - §5.2 — added <code>weighted_impact_index</code> (signed-weight per-respondent score, averaged over the impact denominator). - §7 — added <code>country_gender</code>, <code>country_age_band</code>, <code>country_gender_age_band</code> cross-strata to the published Parquet output (already computed in v0.1, now part of the published contract). - §9 — added rolling-window pooling rules used by the dashboard. - Dashboard collapsed v1 + v2 into a single page with world-map view, color-by-metric dropdown, gender/age/frequency filters, and Single / Last 6 / Last 12 period selector. - README and metric_spec consolidated into this single file.</p>
+<p><strong>v0.1</strong> - Initial Phase 1 release: CSV → Parquet metric layer with 8 stratum levels, 7 impact flags, net_impact_index, and 95% Wilson CIs.</p>
 </body>
 </html>

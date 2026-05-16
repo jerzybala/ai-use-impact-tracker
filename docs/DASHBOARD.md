@@ -1,6 +1,6 @@
 # AI Use Impact Tracker — Dashboard Specification
 
-**Version:** 0.2 · **Scope:** the single-page world-map dashboard (`preview.html`)
+**Version:** 0.3 · **Scope:** the single-page world-map dashboard (`preview.html`)
 
 This document describes the dashboard as a product: what it shows, how filters
 compose, and the algorithms that run at view time. It is intentionally
@@ -445,25 +445,44 @@ There is no offline mode. The dashboard requires an HTTP origin (not
 
 ## 11. Known limitations
 
+- **Non-probability sample.** The GMP respondent pool is a convenience
+  sample recruited via online ads. It carries no post-stratification or
+  design weights, so demographic proportions do not match national populations.
+  All values on the dashboard are descriptive, not population-representative.
+  Associations between AI frequency and impact are correlational, not causal.
+- **Composition effects.** Month-over-month shifts in a country's weighted
+  impact index may reflect a change in respondent mix (e.g. recruitment
+  campaigns, seasonal response patterns, country mix changes) rather than a
+  change in attitude. The dashboard does not decompose these effects.
 - **Approximate rolling pooling.** The Last 6 / Last 12 window pools monthly
   aggregates by weighted mean; the exact value would require pooling
   respondent-level data first. This biases nothing in expectation but
-  understates uncertainty.
+  understates uncertainty (±1 pp within typical windows).
 - **No confidence intervals shown.** The ETL emits Wilson 95% CIs for every
-  share metric and SE-based CIs for the mean metrics; the dashboard does not
+  share metric and SE-based CIs for mean metrics; the dashboard does not
   currently render them.
-- **No survey weights.** The dashboard inherits the metric layer's choice to
-  treat respondents as an equal-weighted sample. Cross-country comparisons
-  should be read as descriptive, not population-representative.
-- **No composition decomposition.** Month-over-month shifts in a country's
-  weighted impact index may reflect a change in respondent mix rather than a
-  change in attitude. The dashboard does not surface this.
+- **Editorial weights.** The `IMPACT_WEIGHTS` baked into the Weighted Impact
+  Index reflect stakeholder judgment about relative severity, not empirical
+  calibration. Different weights would change index values and country rankings.
+  Sensitivity analysis has not yet been conducted. The asymmetric design
+  (total negative weight −2.5 vs total positive +1.5) is intentional.
+- **Dose-response uses NII, not WII.** The dose-response panel shows the
+  simpler Net Impact Index by frequency level. Weighted dose-response is a
+  planned enhancement.
+- **Multi-select interactions.** The WII sums flag weights additively. A
+  respondent selecting both a positive and negative flag gets the arithmetic
+  sum, which may not capture the full experience of simultaneous benefit and
+  harm.
+- **Suppression and small-cell noise.** Strata below 50 respondents are
+  suppressed, but cells just above the threshold have wide CIs and can shift
+  substantially. Use caution with low-N strata.
+- **Data source filtering not yet implemented.** Per Tara's spec, the final
+  version should use only Google Display and Meta traffic, excluding Google
+  Search and down-weighting organic to 10%. Currently all sources are treated
+  equally.
 - **Static color domains.** The per-metric color domains are chosen for a
   visually informative spread on the current data and are not adaptive. If
   the underlying distribution shifts substantially, the domains may need to
   be reconsidered.
-- **Editorial weights.** The `IMPACT_WEIGHTS` baked into the Weighted Impact
-  Index reflect editorial judgment about relative severity. They are not
-  empirically calibrated. The dashboard takes them as given.
 - **Network-dependent.** A failed CDN or atlas fetch breaks the
   visualization. There is no bundled fallback geometry.

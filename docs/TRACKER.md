@@ -1,6 +1,6 @@
 # AI Use Impact Tracker
 
-**Version:** 0.2 · **Owner:** Jerzy Bala, Chief Data Scientist, Sapien Labs
+**Version:** 0.3 · **Owner:** Jerzy Bala, Chief Data Scientist, Sapien Labs
 
 ETL pipeline that converts a Global Mind Project (GMP) data extract into a
 versioned Parquet metric layer, plus a single-page HTML dashboard baker
@@ -272,8 +272,8 @@ Denominator for every metric in this section: respondents with `ai_freq >= 1` AN
 | `impact_share_not_sure` | Share where `impact_not_sure = true` |
 | `positive_impact_share` | Share where `impact_improved_quality OR impact_new_opportunities` |
 | `negative_impact_share` | Share where any of `impact_adaptation_pressure`, `impact_job_anxiety`, `impact_job_loss`, `impact_reduced_income` |
-| **`net_impact_index`** | `positive_impact_share − negative_impact_share`, range [−1, 1] |
-| **`weighted_impact_index`** | Mean across the impact denominator of the per-respondent score, where score = sum of `IMPACT_WEIGHTS[flag]` for each flag set true. See §5.2.1. |
+| **`net_impact_index`** | $\texttt{NII} = \texttt{positive\_impact\_share} - \texttt{negative\_impact\_share}$, range $[-1, 1]$ |
+| **`weighted_impact_index`** | $\texttt{WII} = \frac{1}{N_d} \sum_{i \in \mathcal{D}} s_i$, where $s_i = \sum_f w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]$. See §5.2.1. |
 
 Shares can sum to more than 100% because multiple flags may be true for the same respondent.
 
@@ -289,7 +289,11 @@ Shares can sum to more than 100% because multiple flags may be true for the same
 | `impact_job_loss` | −1.0 |
 | `impact_none`, `impact_other`, `impact_not_sure` | 0 |
 
-Range is roughly [−1, +1] but the distribution is **not symmetric** — a respondent must select multiple negative flags simultaneously to reach the lower bound. Confidence interval (`weighted_impact_index_ci_low/high`) is the 95% normal-approximation interval `mean ± 1.96 · SE`.
+Range is roughly $[-1, +1]$ but the distribution is **not symmetric** — a respondent must select multiple negative flags simultaneously to reach the lower bound. Confidence interval (`weighted_impact_index_ci_low/high`) is the 95% Wald interval:
+
+$$
+\texttt{CI} = \texttt{WII} \;\pm\; 1.96 \times \frac{\sigma_s}{\sqrt{N_d}}
+$$
 
 ### 5.3 Dose-response
 
@@ -297,7 +301,19 @@ For each stratum × month, compute `net_impact_index` within each `ai_freq` leve
 
 ### 5.4 Confidence intervals
 
-For all share metrics, compute a 95% Wilson score interval. For `freq_mean`, compute a standard-error-based 95% CI. CIs are emitted as `{metric}_ci_low` and `{metric}_ci_high` columns.
+**Share metrics** — Wilson score 95% CI (bounded $[0, 1]$):
+
+$$
+\tilde{p} \;\pm\; \frac{z \;\sqrt{\dfrac{\hat{p}(1-\hat{p}) + z^2/4n}{n}}}{1 + z^2/n}, \quad z = 1.96
+$$
+
+**Continuous means** (`freq_mean`, `weighted_impact_index`) — Wald 95% CI:
+
+$$
+\texttt{CI} = \bar{x} \;\pm\; 1.96 \times \frac{\sigma}{\sqrt{N}}  \quad (\texttt{ddof}=1)
+$$
+
+CIs are emitted as `{metric}_ci_low` and `{metric}_ci_high` columns.
 
 ## 6. Minimum-N Suppression
 
@@ -321,26 +337,60 @@ Column order is fixed. Adding columns is allowed in minor versions; removing or 
 
 ## 8. Known Limitations
 
-- No survey weights applied; metrics treat respondents as an equal-weighted sample.
-- Self-selection bias not adjusted; associations between `ai_freq` and impact are descriptive.
-- Composition effects not decomposed; month-over-month changes may reflect respondent mix, not attitude shift.
-- CIs assume simple random sampling; will be revised when weights are introduced.
-- `IMPACT_WEIGHTS` (§5.2.1) reflect editorial judgment by the Sapien Labs team about relative severity, not empirical calibration.
+### 8.1 No survey weights (non-probability sample)
 
-These are explicit Phase 1 scope boundaries. Phase 2 will add weighting and compositional adjustment.
+The GMP respondent pool is a convenience sample recruited via online ads (Google Display, Meta, and organic search). It carries no post-stratification or design weights, so demographic proportions in the data do not match national population proportions. All metrics — WII, adoption rate, impact shares — are descriptive statistics of the responding population, not population-level estimates. Associations between `ai_freq` and impact outcomes are correlational; no causal claims are supported.
+
+*Planned mitigation:* Demographic-weighted averaging using UN World Population Prospects age–sex distributions is on the roadmap.
+
+### 8.2 Composition effects in time-series
+
+Month-over-month changes may reflect shifts in who is responding rather than genuine attitudinal change — e.g. a recruitment campaign increasing younger respondents, or country mix changes between months. The stratified breakdowns partially mitigate this by holding one dimension constant, but cross-dimensional composition effects remain. Rolling-window views help smooth short-term fluctuations.
+
+### 8.3 Weight selection
+
+The nine `IMPACT_WEIGHTS` values (§5.2.1) were chosen by stakeholder judgment, not derived from empirical data. Different weight schemes would produce different index values and could alter relative country rankings. Sensitivity analysis has not yet been conducted. The asymmetric design — total negative weight (−2.5) exceeding total positive weight (+1.5) — is intentional but should be disclosed when comparing WII values across studies.
+
+### 8.4 Rolling-window approximation
+
+Rolling-window pooling (§9) computes a weighted average of pre-aggregated monthly metrics. The exact calculation would re-aggregate from individual-level data. The approximation introduces minor error (±1 percentage point within 3–6 month windows) because the impact denominator differs slightly from total N. This trade-off is accepted for client-side performance.
+
+### 8.5 Dose-response uses NII, not WII
+
+The dose-response charts show net impact by AI frequency level using the simpler Net Impact Index, not the Weighted Impact Index. Adding weighted dose-response is a planned enhancement.
+
+### 8.6 Data source filtering not yet implemented
+
+Per Tara's specification, the production version should restrict the respondent pool to Google Display and Meta traffic sources and down-weight organic/search traffic to 10%. This filtering is not yet implemented. The current pipeline processes all traffic sources equally.
+
+### 8.7 Multi-select interaction effects
+
+The WII treats each flag independently — a respondent selecting both "improved quality" (+0.5) and "job anxiety" (−0.25) receives the sum (+0.25). This additive model does not capture potential interactions between simultaneous positive and negative experiences.
+
+### 8.8 Suppression and small-cell noise
+
+Strata with fewer than 50 respondents are suppressed entirely. For strata just above the threshold (e.g., N = 55), confidence intervals are wide and point estimates can shift substantially. Users should exercise caution when interpreting metrics from low-N strata.
+
+### 8.9 CIs assume simple random sampling
+
+Confidence intervals will be revised once survey weights are introduced.
 
 ## 9. Rolling-Window Pooling (dashboard only)
 
 The dashboard's **Period** selector (Single month / Last 6 / Last 12) pools precomputed monthly cells into a rolling window. Pooling is performed client-side on the embedded JSON; it does not change the published Parquet output.
 
-Pooling rules per (country × gender × age) cell across the window months:
+Pooling rules per (country × gender × age) cell across the window months. For a metric $x$ pooled over months $m_1, \ldots, m_w$ with weights $n_m$:
 
-| Field | Aggregation | Weight |
+$$
+x_{\text{pooled}} = \frac{\sum_{m=1}^{w} n_m \cdot x_m}{\sum_{m=1}^{w} n_m}
+$$
+
+| Field | Aggregation | Weight ($n_m$) |
 |---|---|---|
 | `n_respondents`, `n_impact_denominator` | sum | — |
 | `adoption_rate`, `freq_mean` | weighted mean | `n_respondents` |
 | `weighted_impact_index`, `net_impact_index`, all `impact_share_*`, `positive_impact_share`, `negative_impact_share` | weighted mean | `n_impact_denominator` |
-| `dose_response[k]` (for k = 1…6) | weighted mean | `n_impact_denominator` |
+| `dose_response[k]` (for $k = 1, \ldots, 6$) | weighted mean | `n_impact_denominator` |
 
 **This is approximate.** The exact pooled value would require re-running the metric layer on the pooled respondent-level data; the dashboard's weighted-mean of monthly aggregates is correct in expectation but ignores within-month variance. Suppression cells (originally below `MIN_N`) are dropped before pooling, so a country may appear in the rolling window even if some constituent months were individually suppressed.
 
@@ -355,6 +405,11 @@ layout in §7 is the stable contract.
 ---
 
 ## Changelog
+
+**v0.3**
+- §8 — expanded Known Limitations from 5 bullet points to 9 detailed subsections covering non-probability sampling, composition effects, weight selection, rolling-window approximation, dose-response gap, data source filtering, multi-select interactions, small-cell noise, and CI assumptions.
+- Updated dataset: 266,589 rows covering June 2025 – April 2026 (expanded from 75,404 rows / 4 months in Phase 1).
+- Added `AI Use Impact Tracker v2 - Methodology.docx` as the external stakeholder-facing methodology document.
 
 **v0.2**
 - §4.2 — added `impact_job_loss` and `impact_reduced_income` flags (negative sentiment).
