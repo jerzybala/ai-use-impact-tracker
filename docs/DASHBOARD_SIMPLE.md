@@ -16,6 +16,7 @@ the source-side survey columns, see [COLUMNS.md](COLUMNS.md).
 - [6. How the numbers are calculated](#6-how-the-numbers-are-calculated)
 - [7. Colors and number formats](#7-colors-and-number-formats)
 - [8. Quick metric reference](#8-quick-metric-reference)
+- [9. Key caveats](#9-key-caveats)
 
 ---
 
@@ -250,3 +251,21 @@ dose-response), see [METRICS.md](METRICS.md).
   denominator), so they are directly comparable.
 - Adoption Rate uses the **total respondent count** as its denominator,
   since people who don't use AI still count toward the population.
+
+---
+
+## 9. Key caveats
+
+The data behind this dashboard comes from the Global Mind Project, a
+convenience sample recruited via online ads — not a probability survey.
+Demographic proportions do not match national populations, all metrics
+are descriptive of the responding population, and associations between
+AI-use frequency and outcomes are correlational, not causal.
+Month-over-month changes may partly reflect shifts in who is responding
+rather than genuine attitudinal change. The impact severity weights used
+in the Weighted Impact Index are editorial values set by the Sapien Labs
+team, not empirically derived.
+
+For the full discussion — including composition effects, rolling-window
+approximation error, and planned mitigations — see the
+[Methodology reference (§13)](METRICS.html#known-limitations).
