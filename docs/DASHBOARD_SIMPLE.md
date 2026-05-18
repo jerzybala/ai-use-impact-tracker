@@ -109,6 +109,15 @@ month / period / demographic filters. Includes a **dose-response** strip
 showing the Net Impact Index broken out by AI-use frequency level
 (Rarely → Always).
 
+When viewing a **single month**, the Weighted Impact Index stat also
+displays a **95% confidence interval** badge — a blue pill showing the
+interval bounds and the ± margin. This interval is a Wald CI computed
+from the standard error of the weighted mean (mean ± 1.96 × SE). The
+badge is only shown for single-month views because multi-month
+(rolling) summaries are weighted averages of pre-aggregated monthly
+cells, which do not preserve the within-month variance needed to
+compute a valid interval.
+
 ### World map
 
 Each country is filled with a color showing its value for the chosen
@@ -157,7 +166,7 @@ buckets.
 ## 6. How the numbers are calculated
 
 The short version is below. For the full formulas — including the
-Wilson confidence intervals, the IMPACT_WEIGHTS table, and how
+Wilson confidence intervals, the impact severity weights table, and how
 multi-month pooling weights months — see [METRICS.md](METRICS.md).
 
 ### Combining countries
@@ -230,7 +239,7 @@ also appears in the detail panel along with a dose-response strip.
 | **Job Loss** | Share of AI users who say AI caused them to lose their job. |
 | **Reduced Income** | Share of AI users who say AI reduced their income or made it harder to find work. |
 
-For the underlying definitions (impact denominator, IMPACT_WEIGHTS,
+For the underlying definitions (impact denominator, impact severity weights,
 dose-response), see [METRICS.md](METRICS.md).
 
 **Reading the shares:**

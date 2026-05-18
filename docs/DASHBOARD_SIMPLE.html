@@ -115,6 +115,7 @@
 
 <h3>Detail panel</h3>
 <p>Always visible. Shows metric values for the selected country (or for the Global aggregate when no country is selected) under the active month / period / demographic filters. Includes a <strong>dose-response</strong> strip showing the Net Impact Index broken out by AI-use frequency level (Rarely → Always).</p>
+<p>When viewing a <strong>single month</strong>, the Weighted Impact Index stat also displays a <strong>95% confidence interval</strong> badge — a blue pill showing the interval bounds and the ± margin. This interval is a Wald CI computed from the standard error of the weighted mean (mean ± 1.96 × SE). The badge is only shown for single-month views because multi-month (rolling) summaries are weighted averages of pre-aggregated monthly cells, which do not preserve the within-month variance needed to compute a valid interval.</p>
 
 <h3>World map</h3>
 <p>Each country is filled with a color showing its value for the chosen metric. Light gray means no data or too few respondents under the current filters.</p>
@@ -142,7 +143,7 @@
 <p>When you remove a demographic filter, the dashboard does not re-average visible cells — it loads the coarser precomputed slice. This is why "All women across all ages" is <em>not</em> a simple mean of the age-band buckets.</p>
 
 <h2 id="six">6. How the numbers are calculated</h2>
-<p>The short version is below. For the full formulas — including the Wilson confidence intervals, the IMPACT_WEIGHTS table, and how multi-month pooling weights months — see <a href="METRICS.html">METRICS.html</a>.</p>
+<p>The short version is below. For the full formulas — including the Wilson confidence intervals, the impact severity weights table, and how multi-month pooling weights months — see <a href="METRICS.html">METRICS.html</a>.</p>
 
 <h3>Combining countries</h3>
 <p>When the dashboard needs a single number across many countries (for the summary card or the trend chart), it does <strong>not</strong> take a simple average. It uses a <strong>weighted average</strong> — each country contributes in proportion to its respondent count. A country with 10,000 respondents counts ten times more than one with 1,000.</p>
@@ -195,7 +196,7 @@
     <tr><td><strong>Reduced Income</strong></td><td>Share of AI users who say AI reduced their income or made it harder to find work.</td></tr>
   </tbody>
 </table>
-<p>For the underlying definitions (impact denominator, IMPACT_WEIGHTS, dose-response), see <a href="METRICS.html">METRICS.html</a>.</p>
+<p>For the underlying definitions (impact denominator, impact severity weights, dose-response), see <a href="METRICS.html">METRICS.html</a>.</p>
 
 <p><strong>Reading the shares:</strong></p>
 <ul>

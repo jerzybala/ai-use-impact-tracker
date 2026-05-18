@@ -158,7 +158,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   <button id="month-prev" class="month-nav" aria-label="Previous month" title="Previous month">◀</button>
   <select id="month-selector" aria-label="Select month"></select>
   <button id="month-next" class="month-nav" aria-label="Next month" title="Next month">▶</button>
-  <span class="hint">Single-month views update with the selection; the shaded band on the time-series marks the selected period. Rolling-window options pool months using n_respondents as weights (approximate).</span>
+  <span class="hint">Single-month: a dashed vertical line marks the selected month on time-series charts. Rolling-window (Last 3/6 mo): a shaded band highlights the pooled months; KPIs and breakdowns show weighted averages.</span>
 </div>
 
 <div id="tab-overview" class="tab-content active">

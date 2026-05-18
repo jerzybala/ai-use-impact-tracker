@@ -221,7 +221,7 @@ HTML_TEMPLATE = r"""<!DOCTYPE html>
   .detail-panel .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px; }
   .detail-panel .stat .lbl { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; }
   .detail-panel .stat .v { font-size:18px; font-weight:600; color:var(--accent); }
-  .detail-panel .stat .ci { font-size:12px; color:#555; font-weight:500; margin-top:2px; }
+  .detail-panel .stat .ci { font-size:13px; color:#1F4E79; font-weight:600; margin-top:4px; background:#EBF5FB; padding:3px 8px; border-radius:4px; display:inline-block; }
   .dose-block { margin-top:14px; padding-top:12px; border-top:1px solid var(--rule); }
   .dose-block .dose-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px; }
   .dose-items { display:flex; flex-wrap:wrap; gap:6px 18px; line-height:1.5; }
