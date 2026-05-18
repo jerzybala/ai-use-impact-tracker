@@ -508,93 +508,32 @@ swaps the displayed label and value but does not change the underlying
 
 ## 13. Known limitations
 
-These limitations apply to every metric above.
-
-### 13.1 No survey weights (non-probability sample)
-
-The GMP respondent pool is a convenience sample recruited via online
-ads (Google Display, Meta, and organic search). It carries no
-post-stratification or design weights. Demographic proportions in the
-data do not match national population proportions — countries, age
-groups, and genders are represented according to who encounters and
-completes the survey, not according to census benchmarks.
-
-All metrics are descriptive statistics of the responding population,
-not population-level estimates. Associations between `ai_freq` and
-impact outcomes are correlational; higher-frequency AI users who
-report better outcomes may differ systematically from lower-frequency
-users in education, occupation, digital literacy, or other unmeasured
-confounders. No causal claims are supported.
-
-*Planned mitigation:* Demographic-weighted averaging using UN World
-Population Prospects age–sex distributions is on the roadmap. This
-would rebalance age and gender composition within each country but
-would not address self-selection or unmeasured confounders.
-
-### 13.2 Composition effects in time-series
-
-Month-over-month changes may reflect shifts in who is responding
-rather than genuine attitudinal change. If a recruitment campaign
-increases responses from a younger demographic in one month, and
-younger respondents tend to report more positive AI impacts, the
-global WII will rise even if no individual changed their view.
-Country mix changes and seasonal patterns in survey completion can
-similarly shift metrics.
-
-The stratified breakdowns (by country, gender, age) partially
-mitigate this by holding one dimension constant, but
-cross-dimensional composition effects remain. Rolling-window views
-help smooth short-term fluctuations.
-
-### 13.3 Weight selection
-
-The nine `IMPACT_WEIGHTS` (§6) were chosen by stakeholder judgment,
-not derived from empirical data. Different weight schemes would
-produce different index values and could alter relative country
-rankings. Sensitivity analysis (varying weights within a plausible
-range) has not yet been conducted. The asymmetric design — total
-negative weight (−2.5) exceeding total positive weight (+1.5) — is
-intentional but should be disclosed when comparing WII values across
-studies.
-
-### 13.4 Rolling-window approximation
-
-Rolling-window pooling (§11) uses total `n_respondents` as approximate
-weights. The exact calculation would re-aggregate from individual-level
-data within the pooled window. The approximation introduces minor
-error (±1 percentage point within 3–6 month windows) because the
-impact denominator differs slightly from total N. This trade-off is
-accepted for client-side performance.
-
-### 13.5 Dose-response uses NII, not WII
-
-The dose-response curves (§7) show the Net Impact Index by frequency
-level, not the Weighted Impact Index. Adding weighted dose-response
-is a planned enhancement.
-
-### 13.6 Data source filtering not yet implemented
-
-Per Tara's specification, the production version should restrict the
-respondent pool to Google Display and Meta traffic sources and
-down-weight organic/search traffic to 10%. This is not yet
-implemented; the current pipeline processes all traffic sources
-equally.
-
-### 13.7 Multi-select interaction effects
-
-The WII treats each flag independently — a respondent selecting both
-"improved quality" (+0.5) and "job anxiety" (−0.25) receives the sum
-(+0.25). This additive model does not capture potential interactions
-between simultaneous positive and negative experiences.
-
-### 13.8 Suppression and small-cell noise
-
-Strata with fewer than 50 respondents (`MIN_N`) are suppressed
-entirely. For strata just above the threshold (e.g., N = 55),
-confidence intervals are wide and point estimates can shift
-substantially with small data changes.
-
-### 13.9 CIs assume simple random sampling
-
-Confidence intervals will be revised once survey weights are
-introduced.
+- **Non-probability sample.** The GMP respondent pool is a convenience
+  sample (online ads). It carries no design or post-stratification
+  weights, so all metrics describe the responding population, not
+  national populations. All associations are correlational — no causal
+  claims are supported. *Planned:* demographic-weighted averaging using
+  UN age–sex distributions.
+- **Composition effects.** Month-over-month changes may partly reflect
+  shifts in who responds (recruitment mix, seasonality) rather than
+  genuine attitudinal change. Stratified breakdowns and rolling windows
+  help but do not eliminate this.
+- **Weight selection.** The impact severity weights (§6) are editorial
+  values, not empirically derived. Different schemes would change index
+  values and could alter country rankings. The asymmetric design (total
+  negative −2.5 vs. positive +1.5) is intentional.
+- **Rolling-window approximation.** Multi-month pooling (§11) uses
+  weighted means of monthly cells, introducing minor error (±1 pp in
+  3–6 month windows) and no new confidence intervals.
+- **Dose-response uses NII, not WII.** Weighted dose-response is a
+  planned enhancement.
+- **Data source filtering not yet implemented.** The pipeline currently
+  processes all traffic sources equally; production should restrict to
+  Google Display and Meta per specification.
+- **Additive impact model.** The WII sums flag weights independently and
+  does not capture interactions between simultaneous positive and
+  negative experiences.
+- **Small-cell noise.** Strata just above the 50-respondent suppression
+  threshold may have wide CIs and unstable point estimates.
+- **CIs assume simple random sampling.** They will be revised once
+  survey weights are introduced.
