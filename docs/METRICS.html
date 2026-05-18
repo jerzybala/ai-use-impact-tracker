@@ -1,27 +1,67 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="generator" content="pandoc" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-  <title>How the Metrics Are Computed</title>
-  <style>
-    code{white-space: pre-wrap;}
-    span.smallcaps{font-variant: small-caps;}
-    span.underline{text-decoration: underline;}
-    div.column{display: inline-block; vertical-align: top; width: 50%;}
-    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
-    ul.task-list{list-style: none;}
-  </style>
-  <script src="/usr/share/javascript/mathjax/tex-mml-chtml.js" type="text/javascript"></script>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>How the Metrics Are Computed — AI Impact Tracker</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css" />
+<style>
+  :root {
+    --ink:#1a1a1a; --muted:#6b7280; --accent:#1F3A5F; --accent2:#2E5C8A;
+    --pos:#1a7f4e; --neg:#b3261e; --rule:#e5e7eb; --chip:#E8EEF4;
+    --code-bg:#f4f6fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin:0; background:#f6f7f9; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    line-height:1.55; font-size:15px; }
+  .shell { max-width:920px; margin:0 auto; padding:40px 36px 80px; }
+
+  h1 { color:var(--accent); font-size:30px; margin:0 0 8px; letter-spacing:-0.01em; }
+  h2 { color:var(--accent); font-size:22px; margin:36px 0 12px; padding-top:18px;
+    border-top:1px solid var(--rule); letter-spacing:-0.01em; }
+  h3 { color:var(--accent2); font-size:17px; margin:24px 0 8px; }
+  .lede { color:var(--muted); margin:0 0 24px; font-size:15px; }
+
+  p { margin:8px 0 12px; }
+  ul, ol { margin:8px 0 16px; padding-left:24px; }
+  li { margin:5px 0; }
+  strong { color:var(--ink); }
+  a { color:var(--accent2); text-decoration:none; border-bottom:1px solid transparent; }
+  a:hover { border-bottom-color:var(--accent2); }
+
+  code { background:var(--code-bg); padding:1px 6px; border-radius:4px; font-size:90%;
+    font-family: "SF Mono", Menlo, Consolas, monospace; color:#334155; }
+
+  table { width:100%; border-collapse:collapse; margin:14px 0 20px; font-size:14px; }
+  th, td { padding:8px 12px; border-bottom:1px solid var(--rule); text-align:left; vertical-align:top; }
+  th { background:var(--chip); color:var(--accent); font-weight:600; font-size:13px;
+    text-transform:uppercase; letter-spacing:0.4px; }
+  tr:last-child td { border-bottom:none; }
+
+  .toc { background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:14px 22px; margin:18px 0 28px; }
+  .toc h3 { margin:0 0 8px; font-size:13px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:0.6px; }
+  .toc ul { margin:0; padding-left:18px; }
+  .toc li { margin:4px 0; }
+
+  blockquote { border-left:3px solid var(--accent2); margin:12px 0; padding:8px 16px;
+    background:#f0f4f8; color:#475569; border-radius:0 6px 6px 0; }
+  blockquote p { margin:4px 0; }
+
+  .math-block { margin:16px 0; overflow-x:auto; text-align:center; }
+
+  footer { margin-top:48px; padding-top:18px; border-top:1px solid var(--rule);
+    color:var(--muted); font-size:12px; text-align:center; }
+</style>
 </head>
 <body>
-<header id="title-block-header">
-<h1 class="title">How the Metrics Are Computed</h1>
-</header>
+<div class="shell">
+
 <h1 id="how-the-metrics-are-computed">How the Metrics Are Computed</h1>
 <p>This is a detailed walk-through of every metric the AI Impact Tracker publishes, including the exact formulas, denominators, suppression rules, and how the dashboard’s Period filter pools months together.</p>
-<p>It is a companion to <a href="COLUMNS.md"><code>COLUMNS.md</code></a> (which documents the source-side survey columns) and <a href="TRACKER.md"><code>TRACKER.md</code></a> (the spec/contract for the metric layer). All formulas here match the implementation in <code>tracker/src/pipeline/metrics.py</code> and <code>tracker/src/pipeline/normalize.py</code>.</p>
+<p>It is a companion to <a href="COLUMNS.html"><code>COLUMNS.html</code></a> (which documents the source-side survey columns) and <a href="TRACKER.html"><code>TRACKER.html</code></a> (the spec/contract for the metric layer). All formulas here match the implementation in <code>tracker/src/pipeline/metrics.py</code> and <code>tracker/src/pipeline/normalize.py</code>.</p>
 <hr />
 <h2 id="contents">Contents</h2>
 <ul>
@@ -96,9 +136,9 @@
 </tbody>
 </table>
 <h3 id="is_user-does-this-respondent-use-ai-at-all"><code>is_user</code> — does this respondent use AI at all?</h3>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{is\_user} = \mathbb{1}\!\left[\,\texttt{ai\_freq\_int} \geq 1\,\right]
-\]</span></p>
+$$</div></p>
 <p>A respondent at level 0 (“Never”) is <strong>not</strong> an AI user.</p>
 <h3 id="impact-flags-one-hot-from-ai_impact_work">Impact flags — one-hot from <code>ai_impact_work</code></h3>
 <p>The pipe-delimited <code>ai_impact_work</code> answer is split into nine boolean columns; each respondent can have multiple flags set true.</p>
@@ -157,51 +197,51 @@
 </tbody>
 </table>
 <p>Two derived boolean columns roll the flags into a positive / negative direction:</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{is\_positive} = \texttt{impact\_improved\_quality} \;\lor\; \texttt{impact\_new\_opportunities}
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{is\_negative} = \texttt{impact\_adaptation\_pressure} \;\lor\; \texttt{impact\_job\_anxiety} \;\lor\; \texttt{impact\_job\_loss} \;\lor\; \texttt{impact\_reduced\_income}
-\]</span></p>
+$$</div></p>
 <p><code>impact_none</code>, <code>impact_other</code>, <code>impact_not_sure</code>, and <code>impact_na</code> are treated as neither positive nor negative.</p>
 <hr />
 <h2 id="core-indicators">2. Core indicators</h2>
 <p>These are reported for <strong>every stratum × month</strong>.</p>
 <h3 id="n_respondents"><code>n_respondents</code></h3>
 <p>Plain count of respondents in the cell.</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 N = \bigl|\{i : i \in \text{stratum} \times \text{month}\}\bigr|
-\]</span></p>
+$$</div></p>
 <p>This is also the denominator for <code>adoption_rate</code> and <code>freq_mean</code>.</p>
 <h3 id="adoption_rate-share-who-use-ai-at-all"><code>adoption_rate</code> — share who use AI at all</h3>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{adoption\_rate} = \frac{\sum_{i=1}^{N} \mathbb{1}[\texttt{is\_user}_i]}{N}
-\]</span></p>
-<p>Range <span class="math inline">\([0, 1]\)</span>. Includes respondents at every <code>ai_freq</code> level from “Rarely” upward.</p>
+$$</div></p>
+<p>Range \([0, 1]\). Includes respondents at every <code>ai_freq</code> level from “Rarely” upward.</p>
 <h3 id="freq_mean-mean-ai-use-frequency-on-the-06-scale"><code>freq_mean</code> — mean AI-use frequency on the 0–6 scale</h3>
-<p><span class="math display">\[
-\texttt{freq\_mean} = \frac{1}{N&#39;} \sum_{i=1}^{N&#39;} \texttt{ai\_freq\_int}_i
-\]</span></p>
-<p>where <span class="math inline">\(N&#39;\)</span> is the count of rows with non-null <code>ai_freq_int</code>. Range <span class="math inline">\([0, 6]\)</span>. A <code>freq_mean</code> of <span class="math inline">\(2.08\)</span> means roughly “monthly use” on average; <span class="math inline">\(4.0\)</span> means “daily” on average.</p>
+<p><div class="math-block">$$
+\texttt{freq\_mean} = \frac{1}{N'} \sum_{i=1}^{N'} \texttt{ai\_freq\_int}_i
+$$</div></p>
+<p>where \(N'\) is the count of rows with non-null <code>ai_freq_int</code>. Range \([0, 6]\). A <code>freq_mean</code> of \(2.08\) means roughly “monthly use” on average; \(4.0\) means “daily” on average.</p>
 <blockquote>
 <p>Note: <code>freq_mean</code> is computed and stored, but no longer surfaced as a selectable map metric on the redesigned dashboard.</p>
 </blockquote>
 <h3 id="freq_share_0-freq_share_6-distribution"><code>freq_share_0</code> … <code>freq_share_6</code> — distribution</h3>
-<p>For each ordinal level <span class="math inline">\(k = 0, \ldots, 6\)</span>:</p>
-<p><span class="math display">\[
-\texttt{freq\_share}_k = \frac{\sum_{i=1}^{N&#39;} \mathbb{1}[\texttt{ai\_freq\_int}_i = k]}{N&#39;}
-\]</span></p>
-<p>The seven shares sum to <span class="math inline">\(1\)</span>.</p>
+<p>For each ordinal level \(k = 0, \ldots, 6\):</p>
+<p><div class="math-block">$$
+\texttt{freq\_share}_k = \frac{\sum_{i=1}^{N'} \mathbb{1}[\texttt{ai\_freq\_int}_i = k]}{N'}
+$$</div></p>
+<p>The seven shares sum to \(1\).</p>
 <hr />
 <h2 id="the-impact-denominator">3. The impact denominator</h2>
 <p>The impact metrics in §4–§6 do <strong>not</strong> use <code>n_respondents</code> as their denominator. They use a stricter base population, the <strong>impact denominator</strong>:</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{in\_impact\_denom}_i = \texttt{is\_user}_i \;\land\; \texttt{has\_impact\_response}_i
-\]</span></p>
+$$</div></p>
 <p>where <code>has_impact_response</code> means at least one of the eight real impact flags is true (all flags except <code>impact_na</code>):</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{has\_impact\_response} = \bigvee_{f \,\in\, \mathcal{F} \setminus \{\texttt{impact\_na}\}} \texttt{flag}_f
-\]</span></p>
+$$</div></p>
 <p>i.e. the disjunction over <code>impact_improved_quality</code>, <code>impact_new_opportunities</code>, <code>impact_adaptation_pressure</code>, <code>impact_job_anxiety</code>, <code>impact_job_loss</code>, <code>impact_reduced_income</code>, <code>impact_none</code>, <code>impact_other</code>, and <code>impact_not_sure</code>.</p>
 <p>So the impact denominator is reported as <code>n_impact_denominator</code> and equals the count of respondents who:</p>
 <ol type="1">
@@ -212,11 +252,11 @@ N = \bigl|\{i : i \in \text{stratum} \times \text{month}\}\bigr|
 <p>The dashboard tooltip describes this base as “AI users with impact response”.</p>
 <hr />
 <h2 id="impact-share-metrics">4. Impact share metrics</h2>
-<p>For each impact flag listed in §1, the share is computed against the impact denominator. Let <span class="math inline">\(N_d\)</span> denote <code>n_impact_denominator</code>:</p>
-<p><span class="math display">\[
+<p>For each impact flag listed in §1, the share is computed against the impact denominator. Let \(N_d\) denote <code>n_impact_denominator</code>:</p>
+<p><div class="math-block">$$
 \texttt{impact\_share}_f = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{flag}_{f,i}]}{N_d}
-\]</span></p>
-<p>where <span class="math inline">\(\mathcal{D}\)</span> is the set of respondents in the impact denominator.</p>
+$$</div></p>
+<p>where \(\mathcal{D}\) is the set of respondents in the impact denominator.</p>
 <p>The metrics published are:</p>
 <table>
 <thead>
@@ -269,18 +309,18 @@ N = \bigl|\{i : i \in \text{stratum} \times \text{month}\}\bigr|
 <hr />
 <h2 id="positive-negative-net-impact">5. Positive / negative / net impact</h2>
 <p>Two rolled-up shares are computed on the same impact denominator:</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{positive\_impact\_share} = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{is\_positive}_i]}{N_d}
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{negative\_impact\_share} = \frac{\sum_{i \in \mathcal{D}} \mathbb{1}[\texttt{is\_negative}_i]}{N_d}
-\]</span></p>
+$$</div></p>
 <p>where <code>is_positive</code> and <code>is_negative</code> are defined in §1.</p>
 <p>The <strong>Net Impact Index</strong> is the difference:</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{NII} = \texttt{positive\_impact\_share} - \texttt{negative\_impact\_share}
-\]</span></p>
-<p>Range <span class="math inline">\([-1, +1]\)</span>:</p>
+$$</div></p>
+<p>Range \([-1, +1]\):</p>
 <ul>
 <li><code>+1</code> means every respondent in the cell picked <strong>only</strong> positive impacts and <strong>no</strong> negative ones.</li>
 <li><code>−1</code> means every respondent picked <strong>only</strong> negative impacts.</li>
@@ -334,11 +374,11 @@ N = \bigl|\{i : i \in \text{stratum} \times \text{month}\}\bigr|
 </table>
 <p>These are editorial values set by the Sapien Labs team; they reflect judgment about relative severity, not an empirical calibration.</p>
 <h3 id="per-respondent-score">Per-respondent score</h3>
-<p>For each respondent <span class="math inline">\(i\)</span> in the impact denominator, sum the weights of every flag they selected:</p>
-<p><span class="math display">\[
+<p>For each respondent \(i\) in the impact denominator, sum the weights of every flag they selected:</p>
+<p><div class="math-block">$$
 s_i = \sum_{f \in \mathcal{F}} w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]
-\]</span></p>
-<p>where <span class="math inline">\(w_f = \texttt{IMPACT\_WEIGHTS}[f]\)</span> and <span class="math inline">\(\mathcal{F}\)</span> is the set of eight weighted flags (excluding <code>impact_na</code>).</p>
+$$</div></p>
+<p>where \(w_f = \texttt{IMPACT\_WEIGHTS}[f]\) and \(\mathcal{F}\) is the set of eight weighted flags (excluding <code>impact_na</code>).</p>
 <p>Examples:</p>
 <ul>
 <li>A respondent who selected only “Improved my work quality” scores <code>+0.5</code>.</li>
@@ -349,54 +389,54 @@ s_i = \sum_{f \in \mathcal{F}} w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]
 <p>A single respondent’s score can exceed <code>±1</code> if they selected several weighted flags in the same direction.</p>
 <h3 id="cell-value">Cell value</h3>
 <p>The published <code>weighted_impact_index</code> is the arithmetic mean of these per-respondent scores over the impact denominator:</p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
 \texttt{WII} = \frac{1}{N_d} \sum_{i \in \mathcal{D}} s_i
-\]</span></p>
-<p>Range is roughly <span class="math inline">\([-1, +1]\)</span> in practice but is <strong>not symmetric</strong>: a respondent would need to select multiple negative flags simultaneously to drive a cell well below <span class="math inline">\(-1\)</span>.</p>
+$$</div></p>
+<p>Range is roughly \([-1, +1]\) in practice but is <strong>not symmetric</strong>: a respondent would need to select multiple negative flags simultaneously to drive a cell well below \(-1\).</p>
 <p>A positive cell value means the average AI user in that stratum had a net-positive experience; a negative value means the average user had a net-negative experience.</p>
 <hr />
 <h2 id="dose-response">7. Dose-response</h2>
-<p>The dashboard’s “Dose-response” row shows the <strong>Net Impact Index by AI-use frequency level</strong>. For each stratum × month, and for each ordinal <code>ai_freq</code> level <span class="math inline">\(k = 1, \ldots, 6\)</span>:</p>
-<p><span class="math display">\[
+<p>The dashboard’s “Dose-response” row shows the <strong>Net Impact Index by AI-use frequency level</strong>. For each stratum × month, and for each ordinal <code>ai_freq</code> level \(k = 1, \ldots, 6\):</p>
+<p><div class="math-block">$$
 \texttt{dose\_response}[k] = \frac{\sum_{i \in \mathcal{D}_k} \mathbb{1}[\texttt{is\_positive}_i]}{|\mathcal{D}_k|} \;-\; \frac{\sum_{i \in \mathcal{D}_k} \mathbb{1}[\texttt{is\_negative}_i]}{|\mathcal{D}_k|}
-\]</span></p>
-<p>where <span class="math inline">\(\mathcal{D}_k = \{i \in \mathcal{D} : \texttt{ai\_freq\_int}_i = k\}\)</span>.</p>
+$$</div></p>
+<p>where \(\mathcal{D}_k = \{i \in \mathcal{D} : \texttt{ai\_freq\_int}_i = k\}\).</p>
 <p>The denominator is respondents in the impact denominator (§3) at that specific frequency level. If that level has fewer than <code>MIN_N</code> respondents (§9), the entry is <code>null</code> (rendered as <code>n/a</code> in the dashboard).</p>
 <p>Level 0 (“Never”) is not part of the impact denominator and is not reported.</p>
 <p>Interpretation: a dose-response that climbs from <code>+0.10</code> at “Rarely” to <code>+0.40</code> at “Daily” suggests the net impact is more positive among heavier users — a hint of dose-dependence, not a causal claim.</p>
 <hr />
 <h2 id="confidence-intervals">8. Confidence intervals</h2>
 <h3 id="share-metrics-wilson-95-score-interval">Share metrics — Wilson 95% score interval</h3>
-<p>All share metrics (<code>adoption_rate</code>, every <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code>) get a Wilson score 95% CI. Given <span class="math inline">\(k\)</span> successes out of <span class="math inline">\(n\)</span> trials and <span class="math inline">\(z = 1.96\)</span>:</p>
-<p><span class="math display">\[
+<p>All share metrics (<code>adoption_rate</code>, every <code>impact_share_*</code>, <code>positive_impact_share</code>, <code>negative_impact_share</code>) get a Wilson score 95% CI. Given \(k\) successes out of \(n\) trials and \(z = 1.96\):</p>
+<p><div class="math-block">$$
 \hat{p} = \frac{k}{n}
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \tilde{p} = \frac{\hat{p} + \dfrac{z^2}{2n}}{1 + \dfrac{z^2}{n}}
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{CI} = \tilde{p} \;\pm\; \frac{z \;\sqrt{\dfrac{\hat{p}(1-\hat{p}) + \dfrac{z^2}{4n}}{n}}}{1 + \dfrac{z^2}{n}}
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{ci\_low} = \max(0,\;\texttt{CI}_\text{low}), \quad \texttt{ci\_high} = \min(1,\;\texttt{CI}_\text{high})
-\]</span></p>
-<p>Wilson is preferred over the normal-approximation Wald interval because it stays inside <span class="math inline">\([0, 1]\)</span> even at extreme <span class="math inline">\(\hat{p}\)</span> and small <span class="math inline">\(n\)</span>.</p>
+$$</div></p>
+<p>Wilson is preferred over the normal-approximation Wald interval because it stays inside \([0, 1]\) even at extreme \(\hat{p}\) and small \(n\).</p>
 <h3 id="freq_mean-wald-95-ci"><code>freq_mean</code> — Wald 95% CI</h3>
-<p><span class="math display">\[
-\texttt{SE} = \frac{\sigma}{\sqrt{N&#39;}} \quad (\text{with } \texttt{ddof}=1)
-\]</span></p>
-<p><span class="math display">\[
+<p><div class="math-block">$$
+\texttt{SE} = \frac{\sigma}{\sqrt{N'}} \quad (\text{with } \texttt{ddof}=1)
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{CI} = \texttt{freq\_mean} \;\pm\; 1.96 \times \texttt{SE}
-\]</span></p>
+$$</div></p>
 <h3 id="weighted_impact_index-wald-95-ci"><code>weighted_impact_index</code> — Wald 95% CI</h3>
-<p>The per-respondent score <span class="math inline">\(s_i\)</span> (§6) is treated as a continuous variable:</p>
-<p><span class="math display">\[
+<p>The per-respondent score \(s_i\) (§6) is treated as a continuous variable:</p>
+<p><div class="math-block">$$
 \texttt{SE} = \frac{\sigma_s}{\sqrt{N_d}} \quad (\text{with } \texttt{ddof}=1)
-\]</span></p>
-<p><span class="math display">\[
+$$</div></p>
+<p><div class="math-block">$$
 \texttt{CI} = \texttt{WII} \;\pm\; 1.96 \times \texttt{SE}
-\]</span></p>
-<p>where <span class="math inline">\(\sigma_s\)</span> is the sample standard deviation of the per-respondent scores and <span class="math inline">\(N_d\)</span> is the impact denominator size.</p>
+$$</div></p>
+<p>where \(\sigma_s\) is the sample standard deviation of the per-respondent scores and \(N_d\) is the impact denominator size.</p>
 <p>All CIs assume simple random sampling — they will be revised once survey weights are introduced.</p>
 <hr />
 <h2 id="minimum-n-suppression">9. Minimum-N suppression</h2>
@@ -541,7 +581,7 @@ s_i = \sum_{f \in \mathcal{F}} w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]
 <p>Month-over-month changes may reflect shifts in who is responding rather than genuine attitudinal change. If a recruitment campaign increases responses from a younger demographic in one month, and younger respondents tend to report more positive AI impacts, the global WII will rise even if no individual changed their view. Country mix changes and seasonal patterns in survey completion can similarly shift metrics.</p>
 <p>The stratified breakdowns (by country, gender, age) partially mitigate this by holding one dimension constant, but cross-dimensional composition effects remain. Rolling-window views help smooth short-term fluctuations.</p>
 <h3 id="weight-selection">13.3 Weight selection</h3>
-<p>The nine <code>IMPACT_WEIGHTS</code> (§6) were chosen by stakeholder judgment, not derived from empirical data. Different weight schemes would produce different index values and could alter relative country rankings. Sensitivity analysis (varying weights within a plausible range) has not yet been conducted. The asymmetric design — total negative weight (−2.5) exceeding total positive weight (+1.5) — is intentional but should be disclosed when comparing WII values across studies.</p>
+<p>The nine impact severity weights (§6) were chosen by stakeholder judgment, not derived from empirical data. Different weight schemes would produce different index values and could alter relative country rankings. Sensitivity analysis (varying weights within a plausible range) has not yet been conducted. The asymmetric design — total negative weight (−2.5) exceeding total positive weight (+1.5) — is intentional but should be disclosed when comparing WII values across studies.</p>
 <h3 id="rolling-window-approximation">13.4 Rolling-window approximation</h3>
 <p>Rolling-window pooling (§11) uses total <code>n_respondents</code> as approximate weights. The exact calculation would re-aggregate from individual-level data within the pooled window. The approximation introduces minor error (±1 percentage point within 3–6 month windows) because the impact denominator differs slightly from total N. This trade-off is accepted for client-side performance.</p>
 <h3 id="dose-response-uses-nii-not-wii">13.5 Dose-response uses NII, not WII</h3>
@@ -554,5 +594,16 @@ s_i = \sum_{f \in \mathcal{F}} w_f \cdot \mathbb{1}[\texttt{flag}_{f,i}]
 <p>Strata with fewer than 50 respondents (<code>MIN_N</code>) are suppressed entirely. For strata just above the threshold (e.g., N = 55), confidence intervals are wide and point estimates can shift substantially with small data changes.</p>
 <h3 id="cis-assume-simple-random-sampling">13.9 CIs assume simple random sampling</h3>
 <p>Confidence intervals will be revised once survey weights are introduced.</p>
+<footer>AI Impact Tracker · Sapien Labs · Global Mind Project</footer>
+</div>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '\\(', right: '\\)', display: false}
+    ],
+    throwOnError: false
+  });"></script>
 </body>
 </html>
